@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Abastecimiento Mensual - Rango Dinámico (BC Sync V5)</title>
+    <title>Control de Abastecimiento Mensual - Rango Dinámico (BC Sync V6)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,600&display=swap" rel="stylesheet">
@@ -40,7 +40,7 @@
                         <span class="w-3.5 h-3.5 rounded-full bg-[#10b981] inline-block shadow-[0_0_10px_#10b981]"></span>
                         Planificación de Compras Mensuales
                     </h1>
-                    <p class="text-xs text-[#a1a1aa] mt-1.5">Análisis de consumo con rango de fechas dinámico (Conectado a BC)</p>
+                    <p class="text-xs text-[#a1a1aa] mt-1.5">Análisis de consumo con rango de fechas dinámico (Conectado a BC V6 - A prueba de fallos)</p>
                 </div>
                 
                 <div class="flex flex-col items-end gap-1 w-full lg:w-auto">
@@ -62,7 +62,7 @@
                 </div>
             </header>
 
-            <!-- NUEVO: SELECTOR DE RANGO DE FECHAS -->
+            <!-- SELECTOR DE RANGO DE FECHAS -->
             <div class="bg-[#141416] border border-[#3f3f46] p-3 rounded-xl mb-3 flex flex-wrap items-center gap-4 shadow-lg">
                 <div class="flex items-center gap-2 border-r border-[#27272a] pr-4">
                     <svg class="w-5 h-5 text-[#a855f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -108,7 +108,7 @@
                 </div>
                 <div class="flex flex-col justify-center">
                     <label class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Estado de Compra</label>
-                    <select id="status-filter-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50"><option value="TODOS">Ver Todo el Listado</option><option value="CON_SUGERIDO">Solo con Sugerido Compra (> 0)</option></select>
+                    <select id="status-filter-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50"><option value="TODOS">Ver Todo el Listado</option><option value="CON_SUGERIDO">Solo con Sugerido (> 0)</option></select>
                 </div>
                 <div class="flex flex-col justify-center">
                     <label class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Búsqueda rápida</label>
@@ -173,7 +173,6 @@
         let appData = { rawArts: null, rawMovs: null, currentMonthsCount: 1, warehouses: [], records: [], requestedQtys: {}, supplierData: {}, codeToSupplier: {}, globalDescriptions: {} };
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Configurar fechas por defecto (Ej: Últimos 6 meses)
             const today = new Date();
             const defaultStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
             startMonthInput.value = `${defaultStart.getFullYear()}-${String(defaultStart.getMonth() + 1).padStart(2, '0')}`;
@@ -188,8 +187,9 @@
                 if (!appData.codeToSupplier) appData.codeToSupplier = {};
                 
                 if (appData.rawArts && appData.rawMovs) {
-                    statusBadge.innerText = "Base Datos: Activa (BC)"; statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
-                    buildRecordsFromRaw(); // Reconstruye con las fechas actuales del input
+                    statusBadge.innerText = "Base Datos: Activa (BC)"; 
+                    statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
+                    buildRecordsFromRaw(); 
                 }
             }
         });
@@ -212,22 +212,24 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
 
-                if (data && data.articulos && data.movimientos) {
+                if (data && data.articulos) {
                     appData.rawArts = data.articulos;
-                    appData.rawMovs = data.movimientos;
+                    // Aseguramos que rawMovs sea un array aunque BC no mande movimientos
+                    appData.rawMovs = data.movimientos || [];
+                    
                     localStorage.setItem('logistic_purchase_v8_dynamic', JSON.stringify(appData));
                     
                     statusBadge.innerText = "Base Datos: Activa (BC)"; 
                     statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
                     
                     buildRecordsFromRaw();
-                    alert("¡Datos descargados! Ahora puedes cambiar el rango de fechas cuantas veces quieras y el cálculo será inmediato.");
+                    alert(`¡Sincronización Exitosa! \nSe cargaron ${data.articulos.length} artículos y ${appData.rawMovs.length} movimientos históricos.`);
                 } else {
-                    alert("El flujo no devolvió la estructura esperada de artículos y movimientos.");
+                    alert("El flujo de Power Automate no devolvió la tabla de artículos.");
                 }
             } catch (error) {
                 console.error("Error de BC:", error);
-                alert("Ocurrió un error al sincronizar con BC.");
+                alert("Ocurrió un error al sincronizar con BC. Revisa tu consola (F12) para más detalles.");
             } finally {
                 syncIcon.classList.remove('animate-spin-slow');
                 syncBcBtn.disabled = false;
@@ -236,7 +238,7 @@
         });
 
         function buildRecordsFromRaw() {
-            if (!appData.rawArts || !appData.rawMovs) return;
+            if (!appData.rawArts) return;
 
             const startVal = startMonthInput.value;
             const endVal = endMonthInput.value;
@@ -245,9 +247,7 @@
             const [sYear, sMonth] = startVal.split('-');
             const [eYear, eMonth] = endVal.split('-');
             
-            // Inicio: Día 1 del mes seleccionado
             const startDate = new Date(sYear, parseInt(sMonth) - 1, 1);
-            // Fin: Último día del mes seleccionado
             const endDate = new Date(eYear, parseInt(eMonth), 0); 
 
             let monthsCount = (parseInt(eYear) - parseInt(sYear)) * 12 + (parseInt(eMonth) - parseInt(sMonth)) + 1;
@@ -264,61 +264,68 @@
             const whSet = new Set();
             appData.globalDescriptions = {};
 
+            // 1. CARGAR STOCK REAL DESDE LA TABLA MAESTRA DE ARTÍCULOS
             appData.rawArts.forEach(item => {
                 const code = String(item.number || '').trim();
                 const desc = String(item.displayName || '').trim();
-                if (code) appData.globalDescriptions[code] = desc;
+                const globalStock = parseFloat(item.inventory) || 0;
+                
+                if (!code) return;
+                appData.globalDescriptions[code] = desc;
+
+                // Por defecto, alojamos el stock base general en una bodega matriz
+                const defaultWh = "BOD-GENERAL";
+                const key = `${code}__${defaultWh}`;
+                
+                map[key] = {
+                    key: key, 
+                    code: code, 
+                    description: desc,
+                    warehouse: defaultWh, 
+                    stock: globalStock, 
+                    totalConsumption: 0
+                };
+                whSet.add(defaultWh);
             });
 
-            appData.rawMovs.forEach(mov => {
-                const code = String(mov.itemNumber || '').trim();
-                const warehouseRaw = String(mov.locationCode || '').trim().toUpperCase();
-                const qty = parseFloat(mov.quantity) || 0;
-                const dateRaw = mov.postingDate ? new Date(mov.postingDate) : null;
+            // 2. CARGAR CONSUMOS HISTÓRICOS Y ASIGNAR BODEGAS SECUNDARIAS
+            if (appData.rawMovs && Array.isArray(appData.rawMovs)) {
+                appData.rawMovs.forEach(mov => {
+                    const code = String(mov.itemNumber || '').trim();
+                    // CORRECCIÓN V6: Si no viene locationCode, lo sumamos a la general para evitar que desaparezca
+                    const warehouseRaw = String(mov.locationCode || 'BOD-GENERAL').trim().toUpperCase();
+                    const qty = parseFloat(mov.quantity) || 0;
+                    const dateRaw = mov.postingDate ? new Date(mov.postingDate) : null;
 
-                if (!code || !warehouseRaw) return;
-                whSet.add(warehouseRaw);
+                    if (!code) return;
+                    whSet.add(warehouseRaw);
 
-                const key = `${code}__${warehouseRaw}`;
-                if (!map[key]) {
-                    map[key] = {
-                        key: key, code: code, 
-                        description: appData.globalDescriptions[code] || `Art. ${code}`,
-                        warehouse: warehouseRaw, stock: 0, 
-                        totalConsumption: 0
-                    };
-                }
-
-                // 1. EL STOCK FÍSICO SIEMPRE SE SUMA (Inventario actual real)
-                map[key].stock += qty;
-
-                // 2. EL CONSUMO SE EVALÚA SOLO SI CAE DENTRO DEL RANGO DE FECHAS SELECCIONADO
-                if (dateRaw && dateRaw >= startDate && dateRaw <= endDate) {
-                    if (qty < 0) {
-                        map[key].totalConsumption += Math.abs(qty);
+                    const key = `${code}__${warehouseRaw}`;
+                    
+                    if (!map[key]) {
+                        map[key] = {
+                            key: key, 
+                            code: code, 
+                            description: appData.globalDescriptions[code] || `Art. ${code}`,
+                            warehouse: warehouseRaw, 
+                            stock: 0, // El stock físico ya se cargó en BOD-GENERAL arriba
+                            totalConsumption: 0
+                        };
                     }
-                }
-            });
+
+                    // Calcular consumo si cae dentro de las fechas
+                    if (dateRaw && dateRaw >= startDate && dateRaw <= endDate) {
+                        if (qty < 0) { // Negativo = Salida/Consumo en BC
+                            map[key].totalConsumption += Math.abs(qty);
+                        }
+                    }
+                });
+            }
 
             const detectedWarehouses = Array.from(whSet).sort();
-            if (detectedWarehouses.length === 0) detectedWarehouses.push("BOD-GENERAL");
             appData.warehouses = detectedWarehouses;
-
-            // Rellenar artículos base que no tuvieron movimientos
-            appData.rawArts.forEach(item => {
-                const code = String(item.number || '').trim();
-                if (!code) return;
-                const defaultWh = detectedWarehouses[0];
-                const key = `${code}__${defaultWh}`;
-                if (!map[key]) {
-                    map[key] = {
-                        key: key, code: code, description: appData.globalDescriptions[code], 
-                        warehouse: defaultWh, stock: 0, totalConsumption: 0
-                    };
-                }
-            });
-
             appData.records = Object.values(map);
+            
             populateWarehouseSelect();
             processAndRender();
         }
@@ -464,8 +471,7 @@
                 const stockStyle = isUnderStock && p.avgMonthly > 0 ? 'text-red-400 font-bold bg-red-950/40 rounded px-2 py-0.5 border border-red-900/50' : 'font-mono text-zinc-300';
                 const savedQty = appData.requestedQtys[p.qKey] !== undefined ? appData.requestedQtys[p.qKey] : '';
                 
-                const isCinerarioScope = (selectedWh === "BOD-CINERA") || (selectedWh === "TODAS" && appData.records.some(r => r.code === p.code && r.warehouse === "BOD-CINERA"));
-                const transactions = isCinerarioScope ? (appData.supplierData ? appData.supplierData[p.code] : null) : null;
+                const transactions = appData.supplierData ? appData.supplierData[p.code] : null;
 
                 let supplierCellHtml = p.mappedSupplier ? `<div class="text-[#3b82f6] font-bold uppercase tracking-wide text-[11px] mb-1 truncate">${p.mappedSupplier}</div>` : `<span class="text-zinc-600 italic text-xs select-none">Sin Proveedor</span>`;
                 if (transactions && transactions.length > 0) {
