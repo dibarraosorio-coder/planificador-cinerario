@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Abastecimiento Mensual - Premium Fullscreen (BC Sync)</title>
+    <!-- Importación de Google Fonts para la firma elegante -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,600&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS v4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- SheetJS para procesamiento local de Excel/CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        /* Ocultar por completo las flechas nativas de los inputs de número (Spin Buttons) */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield; /* Para Firefox */
+        }
+
+        /* DISEÑO DE BARRA DE DESPLAZAMIENTO PREMIUM (OSCURA Y VERDE) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0b0c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 9999px;
+            border: 2px solid #0b0b0c;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
+        }
+        /* Soporte nativo para Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #27272a #0b0b0c;
+        }
+        
+        /* Animación personalizada para la sincronización */
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin-slow 2s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-[#0b0b0c] text-[#e4e4e7] font-sans h-screen flex flex-col antialiased px-4 sm:px-8 overflow-hidden">
+
+    <div class="w-full max-w-full mx-auto flex flex-col h-full">
+        
+        <!-- ========================================== -->
+        <!-- BLOQUE SUPERIOR FIJO (HEADER + CONTROLES)  -->
+        <!-- ========================================== -->
+        <div class="bg-[#0b0b0c] pt-4 pb-3 shrink-0">
+            
+            <!-- Encabezado / Header -->
+            <header class="mb-3 border-b border-[#27272a] pb-3 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                        <span class="w-3.5 h-3.5 rounded-full bg-[#10b981] inline-block shadow-[0_0_10px_#10b981]"></span>
+                        Planificación de Compras Mensuales
+                    </h1>
+                    <p class="text-xs text-[#a1a1aa] mt-1.5">Estructura avanzada conectada en línea con Microsoft Dynamics 365 Business Central</p>
+                </div>
+                
+                <!-- Bloque de controles del lado derecho -->
+                <div class="flex flex-col items-end gap-1 w-full lg:w-auto">
+                    <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
+                        <div id="status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">
+                            Maestro: Vacío
+                        </div>
+                        <div id="pm-status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">
+                            Catálogo Prod: Vacío
+                        </div>
+                        <div id="supplier-status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">
+                            Proveedores: Sin Cargar
+                        </div>
+                        
+                        <!-- BOTÓN DE SINCRONIZACIÓN EN LÍNEA -->
+                        <button id="sync-bc-btn" class="px-5 py-2.5 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-xs rounded-md shadow-lg shadow-[#3b82f6]/10 transition-all flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="sync-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18"/>
+                            </svg>
+                            Sincronizar BC (Artículos y Stock)
+                        </button>
+
+                        <button id="export-excel-btn" class="px-5 py-2.5 bg-[#10b981] hover:bg-[#059669] text-zinc-950 font-bold text-xs rounded-md shadow-lg shadow-[#10b981]/10 transition-all flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Exportar Solicitud
+                        </button>
+                    </div>
+                    <!-- Firma -->
+                    <span class="font-['Playfair_Display'] italic text-xs text-zinc-500/80 tracking-widest font-medium uppercase select-none block mt-0.5 pr-1">
+                        Creado por Diego Ibarra
+                    </span>
+                </div>
+            </header>
+
+            <!-- ZONAS DE CARGA DE ARCHIVOS -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                <div id="drop-zone-master" class="border border-dashed border-[#3f3f46] hover:border-[#10b981] rounded-lg p-3 bg-[#141416] text-center cursor-pointer transition-colors flex flex-col justify-center items-center group">
+                    <input type="file" id="file-input-master" accept=".xlsx,.xls,.csv" class="hidden">
+                    <p class="text-xs font-semibold text-zinc-300 group-hover:text-white">1. Reporte de Movimientos (Consumo Histórico)</p>
+                    <p class="text-[11px] text-zinc-500 mt-0.5">Sube Excel para calcular consumo promedio 6 meses</p>
+                </div>
+
+                <div id="drop-zone-product-master" class="border border-dashed border-[#3f3f46] hover:border-[#a855f7] rounded-lg p-3 bg-[#141416] text-center cursor-pointer transition-colors flex flex-col justify-center items-center group opacity-50 cursor-not-allowed" title="Sustituido por sincronización automática en la nube">
+                    <input type="file" id="file-input-product-master" accept=".xlsx,.xls,.csv" class="hidden" disabled>
+                    <p class="text-xs font-semibold text-zinc-400">2. Maestro de Productos (Catálogo)</p>
+                    <p class="text-[11px] text-zinc-600 mt-0.5">Obtenido de forma automática desde BC</p>
+                </div>
+
+                <div id="drop-zone-suppliers" class="border border-dashed border-[#3f3f46] hover:border-[#3b82f6] rounded-lg p-3 bg-[#141416] text-center cursor-pointer transition-colors flex flex-col justify-center items-center group">
+                    <input type="file" id="file-input-suppliers" accept=".xlsx,.xls" class="hidden">
+                    <p class="text-xs font-semibold text-zinc-300 group-hover:text-white">3. SEGUIMIENTO PROVEEDORES CINERARIO</p>
+                    <p class="text-[11px] text-zinc-500 mt-0.5">Mapeo de marcas y órdenes vigentes 2026</p>
+                </div>
+            </div>
+
+            <!-- FILTROS Y BUSQUEDAS - SECCIÓN DE 6 COLUMNAS -->
+            <div class="bg-[#141416] border border-[#27272a] p-3 rounded-xl grid grid-cols-1 md:grid-cols-6 gap-3">
+                <!-- Selector de Bodegas -->
+                <div class="flex flex-col justify-center">
+                    <label for="warehouse-select" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Bodega</label>
+                    <select id="warehouse-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50">
+                        <option value="TODAS">Todas las bodegas</option>
+                    </select>
+                </div>
+
+                <!-- Filtro de Proveedor -->
+                <div class="flex flex-col justify-center">
+                    <label for="supplier-select" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Filtrar por Proveedor</label>
+                    <select id="supplier-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50">
+                        <option value="TODOS">Todos los proveedores</option>
+                    </select>
+                </div>
+
+                <!-- NUEVO FILTRO: DISPONIBILIDAD DE STOCK -->
+                <div class="flex flex-col justify-center">
+                    <label for="stock-filter-select" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Disponibilidad Stock</label>
+                    <select id="stock-filter-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50">
+                        <option value="TODOS">Ver todo el stock</option>
+                        <option value="SIN_STOCK">Sin Stock (Stock = 0)</option>
+                        <option value="CON_STOCK">Con Stock (> 0)</option>
+                    </select>
+                </div>
+
+                <!-- Filtro de Estado de Compra -->
+                <div class="flex flex-col justify-center">
+                    <label for="status-filter-select" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Estado de Compra</label>
+                    <select id="status-filter-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50">
+                        <option value="TODOS">Ver Todo el Listado</option>
+                        <option value="CON_SUGERIDO">Solo con Sugerido Compra (> 0)</option>
+                        <option value="STOCK_CRITICO">Stock Crítico (Stock &lt; Promedio Mensual)</option>
+                    </select>
+                </div>
+
+                <!-- Buscador Avanzado -->
+                <div class="flex flex-col justify-center">
+                    <label for="search-bar" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Búsqueda rápida</label>
+                    <input type="text" id="search-bar" placeholder="Código o descripción..." class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#10b981]/50">
+                </div>
+
+                <!-- Filtro de Exclusión INS -->
+                <div class="flex items-center justify-between border-l border-[#27272a] pl-3">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider">Nomenclatura INS</span>
+                        <span class="text-[11px] text-zinc-500">Ocultar familias INS</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="exclude-ins-checkbox" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-[#27272a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#10b981] peer-checked:after:bg-zinc-950"></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Utilidades inferiores (Reset) -->
+            <div class="mt-2 flex justify-end">
+                <button id="clear-cache" class="text-[11px] text-zinc-500 hover:text-red-400 font-semibold transition-colors flex items-center gap-1 cursor-pointer">
+                    ✕ Vaciar memorias locales y limpiar tablas
+                </button>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TABLA DE DATOS CON ENCABEZADO FIJO         -->
+        <!-- ========================================== -->
+        <main class="bg-[#141416] rounded-xl border border-[#27272a] shadow-2xl flex-1 min-h-0 mb-4 flex flex-col overflow-hidden">
+            <div class="overflow-auto flex-1">
+                <table class="min-w-full divide-y divide-[#27272a] text-sm table-fixed border-collapse">
+                    <thead class="sticky top-0 bg-[#1f1f22] text-[#d4d4d8] font-semibold tracking-wide z-30 shadow-[0_2px_0_0_#27272a]">
+                        <tr id="table-headers">
+                            <th class="px-4 py-3.5 text-left w-40 bg-[#1f1f22]">Código</th>
+                            <th class="px-4 py-3.5 text-left w-64 bg-[#1f1f22]">Descripción Artículo</th>
+                            <th class="px-4 py-3.5 text-right text-[#10b981] w-24 bg-[#1f1f22]">Prom. 6M</th>
+                            <th class="px-4 py-3.5 text-right text-amber-400 font-bold w-28 bg-[#1f1f22]">Sugerido (3M)</th>
+                            <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock</th>
+                            <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor (Tránsito Pendiente)</th>
+                            <th class="px-4 py-3.5 text-center bg-[#242c2a] text-[#10b981] font-bold w-44 border-l border-[#27272a]">Cantidad a Solicitar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body" class="divide-y divide-[#27272a]/60 text-[#e4e4e7]">
+                        <tr>
+                            <td colspan="13" class="px-5 py-16 text-center text-zinc-500 italic bg-[#0f0f11]">
+                                Esperando carga de archivos o sincronización con Business Central...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Elementos DOM
+        const fileInputMaster = document.getElementById('file-input-master');
+        const dropZoneMaster = document.getElementById('drop-zone-master');
+        const fileInputProductMaster = document.getElementById('file-input-product-master');
+        const dropZoneProductMaster = document.getElementById('drop-zone-product-master');
+        const fileInputSuppliers = document.getElementById('file-input-suppliers');
+        const dropZoneSuppliers = document.getElementById('drop-zone-suppliers');
+        
+        const tableBody = document.getElementById('data-table-body');
+        const tableHeaders = document.getElementById('table-headers');
+        const searchBar = document.getElementById('search-bar');
+        const warehouseSelect = document.getElementById('warehouse-select');
+        const supplierSelect = document.getElementById('supplier-select');
+        const stockFilterSelect = document.getElementById('stock-filter-select');
+        const statusFilterSelect = document.getElementById('status-filter-select');
+        const insCheckbox = document.getElementById('exclude-ins-checkbox');
+        
+        const statusBadge = document.getElementById('status-badge');
+        const pmStatusBadge = document.getElementById('pm-status-badge');
+        const supplierStatusBadge = document.getElementById('supplier-status-badge');
+        
+        const clearCacheBtn = document.getElementById('clear-cache');
+        const exportExcelBtn = document.getElementById('export-excel-btn');
+        
+        // Elementos de Sincronización en Línea
+        const syncBcBtn = document.getElementById('sync-bc-btn');
+        const syncIcon = document.getElementById('sync-icon');
+        const apiUrl = "https://defaultc9de65b0590045e8967debc553f353.81.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/18/workflows/f125d9a482244a189fef1a96971f0573/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=hD2GzTCclad7776sVI0RWgMb1gyn8uRZw5jnlIygLm4";
+
+        let appData = {
+            months: [],
+            warehouses: [],
+            records: [], 
+            requestedQtys: {},
+            supplierData: {},
+            codeToSupplier: {},
+            globalDescriptions: {} 
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('logistic_purchase_v7_master');
+            if (saved) {
+                appData = JSON.parse(saved);
+                if (!appData.requestedQtys) appData.requestedQtys = {};
+                if (!appData.supplierData) appData.supplierData = {};
+                if (!appData.codeToSupplier) appData.codeToSupplier = {};
+                if (!appData.globalDescriptions) appData.globalDescriptions = {};
+                
+                if (appData.records && appData.records.length) {
+                    statusBadge.innerText = "Maestro: Activo";
+                    statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
+                }
+                if (Object.keys(appData.globalDescriptions).length > 0) {
+                    pmStatusBadge.innerText = "Catálogo Prod: Activo";
+                    pmStatusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#2e164d] text-[#c084fc] border border-[#581c87]";
+                }
+                if (Object.keys(appData.codeToSupplier).length > 0) {
+                    supplierStatusBadge.innerText = "Proveedores: Activo";
+                    supplierStatusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
+                }
+                
+                populateWarehouseSelect();
+                populateSupplierSelect();
+                processAndRender();
+            }
+        });
+
+        // Event listener para sincronización en línea con Business Central
+        syncBcBtn.addEventListener('click', syncWithBusinessCentral);
+
+        async function syncWithBusinessCentral() {
+            syncIcon.classList.add('animate-spin-slow');
+            syncBcBtn.disabled = true;
+            syncBcBtn.innerText = "Conectando con BC...";
+
+            try {
+                const response = await fetch(apiUrl, { method: 'GET' });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data && Array.isArray(data)) {
+                    appData.records = appData.records || [];
+                    appData.globalDescriptions = appData.globalDescriptions || {};
+                    
+                    const whSet = new Set(appData.warehouses);
+                    // Por defecto, asignamos a la bodega general o la correspondiente
+                    whSet.add("BOD-GENERAL");
+                    
+                    data.forEach(item => {
+                        const code = String(item.number || '').trim();
+                        const desc = String(item.displayName || '').trim();
+                        const stock = parseFloat(item.inventory) || 0;
+                        
+                        if (!code) return;
+                        
+                        // Guardar la descripción en catálogo maestro
+                        appData.globalDescriptions[code] = desc;
+                        
+                        // Si ya existe registro de stock para este código en la bodega general, actualizarlo
+                        let existing = appData.records.find(r => r.code === code && r.warehouse === "BOD-GENERAL");
+                        if (existing) {
+                            existing.stock = stock;
+                            existing.description = desc;
+                        } else {
+                            // Si no existe, crear uno nuevo con históricos de consumo en 0 (hasta subir el reporte de movimientos)
+                            appData.records.push({
+                                key: `${code}__BOD-GENERAL`,
+                                code: code,
+                                description: desc,
+                                warehouse: "BOD-GENERAL",
+                                stock: stock,
+                                monthlyConsumptions: Array(6).fill(0)
+                            });
+                        }
+                    });
+
+                    appData.warehouses = Array.from(whSet).sort();
+                    localStorage.setItem('logistic_purchase_v7_master', JSON.stringify(appData));
+                    
+                    // Actualizar estados visuales de los badges
+                    statusBadge.innerText = "Maestro: Activo (BC)";
+                    statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
+                    
+                    pmStatusBadge.innerText = "Catálogo: Conectado (BC)";
+                    pmStatusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#2e164d] text-[#c084fc] border border-[#581c87]";
+                    
+                    populateWarehouseSelect();
+                    processAndRender();
+                    
+                    alert(`Sincronización exitosa. Se actualizaron ${data.length} artículos y sus stocks desde Business Central.`);
+                } else {
+                    alert("Se recibió respuesta pero no contiene una lista de artículos válida.");
+                }
+            } catch (error) {
+                console.error("Error al sincronizar con BC:", error);
+                alert("Ocurrió un error al obtener la información de Business Central a través de Power Automate. Verifica las políticas CORS, el estado del flujo o revisa la consola.");
+            } finally {
+                syncIcon.classList.remove('animate-spin-slow');
+                syncBcBtn.disabled = false;
+                syncBcBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="sync-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18"/>
+                    </svg>
+                    Sincronizar BC (Artículos y Stock)
+                `;
+            }
+        }
+
+        // Event Listeners de Carga de archivos físicos
+        dropZoneMaster.addEventListener('click', () => fileInputMaster.click());
+        dropZoneMaster.addEventListener('dragover', (e) => { e.preventDefault(); dropZoneMaster.classList.add('border-[#10b981]', 'bg-[#1f2937]/30'); });
+        dropZoneMaster.addEventListener('dragleave', () => dropZoneMaster.classList.remove('border-[#10b981]', 'bg-[#1f2937]/30'));
+        dropZoneMaster.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZoneMaster.classList.remove('border-[#10b981]', 'bg-[#1f2937]/30');
+            if (e.dataTransfer.files.length) handleMasterFile(e.dataTransfer.files[0]);
+        });
+        fileInputMaster.addEventListener('change', (e) => {
+            if (e.target.files.length) handleMasterFile(e.target.files[0]);
+        });
+
+        dropZoneSuppliers.addEventListener('click', () => fileInputSuppliers.click());
+        dropZoneSuppliers.addEventListener('dragover', (e) => { e.preventDefault(); dropZoneSuppliers.classList.add('border-[#3b82f6]', 'bg-[#1e3a8a]/20'); });
+        dropZoneSuppliers.addEventListener('dragleave', () => dropZoneSuppliers.classList.remove('border-[#3b82f6]', 'bg-[#1e3a8a]/20'));
+        dropZoneSuppliers.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZoneSuppliers.classList.remove('border-[#3b82f6]', 'bg-[#1e3a8a]/20');
+            if (e.dataTransfer.files.length) handleSuppliersFile(e.dataTransfer.files[0]);
+        });
+        fileInputSuppliers.addEventListener('change', (e) => {
+            if (e.target.files.length) handleSuppliersFile(e.target.files[0]);
+        });
+
+        // Cambios en los inputs y filtros
+        warehouseSelect.addEventListener('change', processAndRender);
+        supplierSelect.addEventListener('change', processAndRender);
+        stockFilterSelect.addEventListener('change', processAndRender);
+        statusFilterSelect.addEventListener('change', processAndRender);
+        insCheckbox.addEventListener('change', processAndRender);
+        searchBar.addEventListener('input', processAndRender);
+
+        tableBody.addEventListener('input', (e) => {
+            if (e.target.classList.contains('qty-input')) {
+                const qKey = e.target.dataset.qkey;
+                const value = parseInt(e.target.value);
+                if (!isNaN(value) && value >= 0) {
+                    appData.requestedQtys[qKey] = value;
+                } else {
+                    delete appData.requestedQtys[qKey];
+                }
+                localStorage.setItem('logistic_purchase_v7_master', JSON.stringify(appData));
+            }
+        });
+
+        clearCacheBtn.addEventListener('click', () => {
+            if (confirm('¿Deseas resetear por completo todas las bases de datos y memorias locales?')) {
+                localStorage.removeItem('logistic_purchase_v7_master');
+                location.reload();
+            }
+        });
+
+        function handleMasterFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const ws = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(ws);
+                parseMasterData(json);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseMasterData(rows) {
+            if (!rows.length || !rows[0]['Nº producto']) {
+                alert('Estructura incorrecta en archivo maestro.');
+                return;
+            }
+
+            const masterDescriptions = {};
+            rows.forEach(row => {
+                const code = String(row['Nº producto'] || '').trim();
+                const desc = String(row['Descripción'] || '').trim();
+                if (code && desc && desc !== 'undefined') masterDescriptions[code] = desc;
+            });
+
+            let maxDate = new Date(Math.max(...rows.map(r => new Date(r['Fecha registro'])).filter(d => !isNaN(d))));
+            if (isNaN(maxDate)) maxDate = new Date();
+
+            const targetMonths = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(maxDate.getFullYear(), maxDate.getMonth() - i, 1);
+                targetMonths.push({
+                    label: d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).toUpperCase(),
+                    year: d.getFullYear(),
+                    month: d.getMonth()
+                });
+            }
+
+            const map = {};
+            const whSet = new Set(appData.warehouses); // Mantener bodegas existentes (ej: BC)
+
+            rows.forEach(row => {
+                const code = String(row['Nº producto'] || '').trim();
+                const warehouse = String(row['Cód. almacén'] || 'BOD-GENERAL').trim();
+                const qty = parseFloat(row['Cantidad']) || 0;
+                const naturaleza = String(row['Naturaleza transacción'] || '').toUpperCase();
+                const dateRaw = new Date(row['Fecha registro']);
+
+                if (!code) return;
+                whSet.add(warehouse);
+
+                let desc = String(row['Descripción'] || '').trim();
+                if (!desc || desc === 'undefined') desc = masterDescriptions[code] || `Art. ${code}`;
+
+                const key = `${code}__${warehouse}`;
+
+                if (!map[key]) {
+                    map[key] = {
+                        key: key,
+                        code: code,
+                        description: desc,
+                        warehouse: warehouse,
+                        stock: 0,
+                        monthlyConsumptions: Array(6).fill(0)
+                    };
+                }
+
+                map[key].stock += qty;
+
+                if (naturaleza === 'CONSUMO' && !isNaN(dateRaw)) {
+                    const rYear = dateRaw.getFullYear();
+                    const rMonth = dateRaw.getMonth();
+                    const mIdx = targetMonths.findIndex(m => m.year === rYear && m.month === rMonth);
+                    if (mIdx !== -1) map[key].monthlyConsumptions[mIdx] += Math.abs(qty);
+                }
+            });
+
+            appData.months = targetMonths;
+            appData.warehouses = Array.from(whSet).sort();
+            
+            // Unificar con los registros de Business Central que ya estén en appData
+            if (appData.records && appData.records.length > 0) {
+                Object.values(map).forEach(newRecord => {
+                    let existing = appData.records.find(r => r.code === newRecord.code && r.warehouse === newRecord.warehouse);
+                    if (existing) {
+                        // El stock en tiempo real de BC prevalece si se sincronizó recientemente
+                        existing.monthlyConsumptions = newRecord.monthlyConsumptions;
+                        if (existing.stock === 0 && newRecord.stock !== 0) {
+                            existing.stock = newRecord.stock; // fallback si no se trajo stock de BC
+                        }
+                    } else {
+                        appData.records.push(newRecord);
+                    }
+                });
+            } else {
+                appData.records = Object.values(map);
+            }
+            
+            localStorage.setItem('logistic_purchase_v7_master', JSON.stringify(appData));
+            populateWarehouseSelect();
+            processAndRender();
+            
+            statusBadge.innerText = "Consumos: Cargados";
+            statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
+        }
+
+        function handleSuppliersFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                
+                const supplierMap = {};
+                const codeToSupplierMap = {};
+
+                workbook.SheetNames.forEach(sheetName => {
+                    const ws = workbook.Sheets[sheetName];
+                    const rowsRaw = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                    if (!rowsRaw || rowsRaw.length < 4) return;
+
+                    let companyName = sheetName.toUpperCase(); 
+                    if (rowsRaw[1] && rowsRaw[1][0]) {
+                        companyName = String(rowsRaw[1][0]).trim().toUpperCase();
+                    }
+
+                    const jsonRows = XLSX.utils.sheet_to_json(ws, { range: 3 });
+                    
+                    jsonRows.forEach(row => {
+                        const rowKeys = Object.keys(row);
+                        const codeKey = rowKeys.find(k => k.trim().toUpperCase() === 'CÓDIGO');
+                        const pendingKey = rowKeys.find(k => k.trim().toUpperCase() === 'CANTIDAD PENDIENTE');
+                        const ocKey = rowKeys.find(k => k.trim().toUpperCase().startsWith('OC'));
+                        const dateKey = rowKeys.find(k => k.trim().toUpperCase() === 'FECHA OC');
+
+                        if (!codeKey) return;
+
+                        const productCode = String(row[codeKey] || '').split('|')[0].trim();
+                        if (!productCode) return;
+
+                        codeToSupplierMap[productCode] = companyName;
+
+                        if (!pendingKey) return;
+                        const pendingQty = parseFloat(row[pendingKey]) || 0;
+
+                        if (row[dateKey]) {
+                            let is2025 = false;
+                            if (row[dateKey] instanceof Date) {
+                                if (row[dateKey].getFullYear() === 2025) is2025 = true;
+                            } else {
+                                const dateStr = String(row[dateKey]).trim();
+                                if (dateStr.includes('2025') || dateStr.endsWith('/25') || dateStr.endsWith('-25')) is2025 = true;
+                            }
+                            if (is2025) return; 
+                        }
+
+                        if (pendingQty > 0) {
+                            let ocValue = String(row[ocKey] || '').trim();
+                            let dateValue = '';
+                            if (row[dateKey]) {
+                                if (row[dateKey] instanceof Date) {
+                                    dateValue = row[dateKey].toLocaleDateString('es-ES');
+                                } else {
+                                    dateValue = String(row[dateKey]).trim().split(' ')[0];
+                                }
+                            }
+                            if (!supplierMap[productCode]) supplierMap[productCode] = [];
+                            supplierMap[productCode].push({
+                                company: companyName,
+                                oc: ocValue,
+                                date: dateValue,
+                                qty: pendingQty
+                            });
+                        }
+                    });
+                });
+
+                appData.supplierData = supplierMap;
+                appData.codeToSupplier = codeToSupplierMap;
+                localStorage.setItem('logistic_purchase_v7_master', JSON.stringify(appData));
+                
+                populateSupplierSelect();
+                processAndRender();
+
+                supplierStatusBadge.innerText = "Proveedores: Activo";
+                supplierStatusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function populateWarehouseSelect() {
+            const current = warehouseSelect.value;
+            warehouseSelect.innerHTML = '<option value="TODAS">Todas las bodegas (Consolidado Global)</option>' + 
+                appData.warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
+            if (appData.warehouses.includes(current)) warehouseSelect.value = current;
+        }
+
+        function populateSupplierSelect() {
+            const current = supplierSelect.value;
+            const suppliers = new Set();
+            if (appData.codeToSupplier) {
+                Object.values(appData.codeToSupplier).forEach(s => {
+                    if (s) suppliers.add(s.toUpperCase().trim());
+                });
+            }
+            const sortedSuppliers = Array.from(suppliers).sort();
+            supplierSelect.innerHTML = '<option value="TODOS">Todos los proveedores</option>' + 
+                '<option value="SIN_PROVEEDOR">Sin Proveedor Asignado</option>' +
+                sortedSuppliers.map(s => `<option value="${s}">${s}</option>`).join('');
+            
+            if (sortedSuppliers.includes(current) || current === "SIN_PROVEEDOR") supplierSelect.value = current;
+        }
+
+        // PROCESAMIENTO CENTRAL CON EVALUACIÓN DE FILTROS INTEGRADOS
+        function getEvaluatedData() {
+            const selectedWh = warehouseSelect.value;
+            const excludeINS = insCheckbox.checked;
+            const query = searchBar.value.toLowerCase();
+            const selectedSupplier = supplierSelect.value;
+            const selectedStock = stockFilterSelect.value;
+            const selectedStatus = statusFilterSelect.value;
+
+            let filtered = appData.records.filter(r => {
+                if (excludeINS && r.code.toUpperCase().startsWith('INS')) return false;
+                if (appData.globalDescriptions && appData.globalDescriptions[r.code]) {
+                    r.description = appData.globalDescriptions[r.code];
+                }
+                if (query && !r.code.toLowerCase().includes(query) && !r.description.toLowerCase().includes(query)) return false;
+                return true;
+            });
+
+            let aggregated = [];
+            if (selectedWh === "TODAS") {
+                const group = {};
+                filtered.forEach(r => {
+                    if (!group[r.code]) {
+                        group[r.code] = {
+                            code: r.code,
+                            description: r.description,
+                            stock: 0,
+                            monthlyConsumptions: Array(6).fill(0),
+                            qKey: `GLOBAL__${r.code}`
+                        };
+                    }
+                    group[r.code].stock += r.stock;
+                    for (let i = 0; i < 6; i++) {
+                        group[r.code].monthlyConsumptions[i] += r.monthlyConsumptions[i];
+                    }
+                });
+                aggregated = Object.values(group);
+            } else {
+                aggregated = filtered.filter(r => r.warehouse === selectedWh).map(r => ({
+                    ...r,
+                    qKey: `${r.code}__${selectedWh}`
+                }));
+            }
+
+            let finalData = [];
+            aggregated.forEach(p => {
+                if (appData.globalDescriptions && appData.globalDescriptions[p.code]) {
+                    p.description = appData.globalDescriptions[p.code];
+                }
+                const sum = p.monthlyConsumptions.reduce((a, b) => a + b, 0);
+                p.avg6M = Math.ceil(sum / 6);
+
+                const isCinerarioScope = (selectedWh === "BOD-CINERA") || 
+                                         (selectedWh === "TODAS" && appData.records.some(r => r.code === p.code && r.warehouse === "BOD-CINERA"));
+                const transactions = isCinerarioScope ? (appData.supplierData ? appData.supplierData[p.code] : null) : null;
+                const totalTransit = (transactions && transactions.length > 0) ? transactions.reduce((sum, t) => sum + (parseFloat(t.qty) || 0), 0) : 0;
+                
+                p.sugerido3M = Math.max(0, Math.ceil((p.avg6M * 3) - p.stock - totalTransit));
+                p.mappedSupplier = appData.codeToSupplier ? (appData.codeToSupplier[p.code] || '') : '';
+
+                // 1. Filtro por Proveedor
+                if (selectedSupplier !== "TODOS") {
+                    if (selectedSupplier === "SIN_PROVEEDOR" && p.mappedSupplier !== '') return;
+                    if (selectedSupplier !== "SIN_PROVEEDOR" && p.mappedSupplier !== selectedSupplier) return;
+                }
+
+                // 2. Filtro de Disponibilidad de Stock
+                if (selectedStock === "SIN_STOCK" && p.stock !== 0) return;
+                if (selectedStock === "CON_STOCK" && p.stock === 0) return;
+
+                // 3. Filtro por Estado de Compra
+                if (selectedStatus === "CON_SUGERIDO" && p.sugerido3M === 0) return;
+                if (selectedStatus === "STOCK_CRITICO" && p.stock >= p.avg6M) return;
+
+                finalData.push(p);
+            });
+
+            // Orden Alfabético estricto A-Z por código
+            finalData.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
+
+            return finalData;
+        }
+
+        function processAndRender() {
+            const months = appData.months;
+            const products = getEvaluatedData();
+            const selectedWh = warehouseSelect.value;
+
+            if (months.length === 6) {
+                tableHeaders.innerHTML = `
+                    <th class="px-4 py-3.5 text-left w-40 bg-[#1f1f22]">Código</th>
+                    <th class="px-4 py-3.5 text-left w-64 bg-[#1f1f22]">Descripción Artículo</th>
+                    ${months.map(m => `<th class="px-2 py-3.5 text-right text-zinc-400 font-mono text-xs w-20 bg-[#1f1f22]">${m.label}</th>`).join('')}
+                    <th class="px-4 py-3.5 text-right text-[#10b981] font-bold w-24 bg-[#1f1f22]">Prom. 6M</th>
+                    <th class="px-4 py-3.5 text-right text-amber-400 font-bold w-28 bg-[#1f1f22]">Sugerido (3M)</th>
+                    <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock</th>
+                    <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor (Tránsito Pendiente)</th>
+                    <th class="px-4 py-3.5 text-center bg-[#242c2a] text-[#10b981] font-bold w-44 border-l border-[#27272a]">Cantidad a Solicitar</th>
+                `;
+            } else {
+                // Cabecera por defecto si no se han cargado los meses históricos
+                tableHeaders.innerHTML = `
+                    <th class="px-4 py-3.5 text-left w-40 bg-[#1f1f22]">Código</th>
+                    <th class="px-4 py-3.5 text-left w-64 bg-[#1f1f22]">Descripción Artículo</th>
+                    <th class="px-4 py-3.5 text-right text-[#10b981] font-bold w-24 bg-[#1f1f22]">Prom. 6M</th>
+                    <th class="px-4 py-3.5 text-right text-amber-400 font-bold w-28 bg-[#1f1f22]">Sugerido (3M)</th>
+                    <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock</th>
+                    <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor (Tránsito Pendiente)</th>
+                    <th class="px-4 py-3.5 text-center bg-[#242c2a] text-[#10b981] font-bold w-44 border-l border-[#27272a]">Cantidad a Solicitar</th>
+                `;
+            }
+
+            if (!products.length) {
+                tableBody.innerHTML = `<tr><td colspan="16" class="px-5 py-16 text-center text-zinc-500 italic bg-[#0f0f11]">Sin registros que coincidan con los filtros seleccionados. Intenta pulsar el botón de Sincronizar con Business Central.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = products.map(p => {
+                let mCells = '';
+                if (months.length === 6) {
+                    mCells = p.monthlyConsumptions.map(val => 
+                        `<td class="px-2 py-4 text-right font-mono text-zinc-400 text-xs">${val.toLocaleString('es-ES')}</td>`
+                    ).join('');
+                }
+
+                const isUnderStock = p.stock < p.avg6M;
+                const stockStyle = isUnderStock && p.avg6M > 0 ? 'text-red-400 font-bold bg-red-950/40 rounded px-2 py-0.5 border border-red-900/50' : 'font-mono text-zinc-300';
+                const savedQty = appData.requestedQtys[p.qKey] !== undefined ? appData.requestedQtys[p.qKey] : '';
+
+                const isCinerarioScope = (selectedWh === "BOD-CINERA") || 
+                                         (selectedWh === "TODAS" && appData.records.some(r => r.code === p.code && r.warehouse === "BOD-CINERA"));
+
+                const transactions = isCinerarioScope ? (appData.supplierData ? appData.supplierData[p.code] : null) : null;
+                
+                let supplierCellHtml = '';
+                if (p.mappedSupplier) {
+                    supplierCellHtml += `<div class="text-[#3b82f6] font-bold uppercase tracking-wide text-[11px] mb-1 truncate">${p.mappedSupplier}</div>`;
+                    if (transactions && transactions.length > 0) {
+                        supplierCellHtml += transactions.map(t => `
+                            <div class="mb-1 last:mb-0 bg-[#1c1c1f] border border-zinc-800 p-1.5 rounded text-[10px] leading-tight">
+                                <div class="text-zinc-400 flex justify-between mt-0.5 gap-2">
+                                    <span>OC: ${t.oc || 'S/N'}</span>
+                                    <span class="text-zinc-500 font-mono">${t.date || ''}</span>
+                                </div>
+                                <div class="text-amber-400 font-medium font-mono text-right mt-0.5">Pendiente: ${t.qty.toLocaleString('es-ES')} u.</div>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    supplierCellHtml = `<span class="text-zinc-600 italic text-xs select-none">Sin Proveedor Mapeado</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-[#1a1a1c] transition-colors border-b border-[#27272a]/60 text-xs">
+                        <td class="px-4 py-3 font-mono font-bold text-zinc-300 select-all tracking-wider">${p.code}</td>
+                        <td class="px-4 py-3 text-zinc-300 font-medium truncate" title="${p.description}">${p.description}</td>
+                        ${mCells}
+                        <td class="px-4 py-3 text-right font-mono font-bold text-[#10b981] bg-[#10b981]/5">${p.avg6M.toLocaleString('es-ES')}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-amber-400 bg-amber-500/5">${p.sugerido3M.toLocaleString('es-ES')}</td>
+                        <td class="px-4 py-3 text-right"><span class="${stockStyle}">${p.stock.toLocaleString('es-ES')}</span></td>
+                        <td class="px-4 py-2 text-left align-middle">${supplierCellHtml}</td>
+                        <td class="px-4 py-1 text-center bg-[#161d1b]/30 border-l border-[#242c2a]">
+                            <input type="number" min="0" placeholder="0"
+                                   class="qty-input w-32 px-2.5 py-1.5 bg-[#0b0b0c] border border-[#3f3f46] focus:border-[#10b981] text-[#10b981] rounded text-right focus:outline-none font-mono font-bold shadow-inner focus:ring-1 focus:ring-[#10b981]/40"
+                                   data-qkey="${p.qKey}"
+                                   value="${savedQty}">
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Exportación inteligente respetando los filtros activos
+        exportExcelBtn.addEventListener('click', () => {
+            const currentRows = getEvaluatedData();
+            const exportData = [];
+
+            currentRows.forEach(p => {
+                const qty = appData.requestedQtys[p.qKey] || 0;
+                if (qty > 0) {
+                    exportData.push({
+                        'Código': p.code,
+                        'Descripción': p.description,
+                        'Proveedor': p.mappedSupplier || 'SIN REGISTRO',
+                        'Stock Actual': p.stock,
+                        'Promedio Consumo 6M': p.avg6M,
+                        'Sugerido 3 Meses': p.sugerido3M,
+                        'Cantidad Solicitada': qty
+                    });
+                }
+            });
+
+            if (!exportData.length) {
+                alert('No hay cantidades ingresadas (> 0) en los artículos visibles para exportar.');
+                return;
+            }
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sugerido Compra");
+            XLSX.writeFile(wb, `Plan_Abastecimiento_${warehouseSelect.value}.xlsx`);
+        });
+    </script>
+</body>
+</html>
