@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Abastecimiento Mensual - Premium Fullscreen (BC Sync V2)</title>
-    <!-- Importación de Google Fonts para la firma elegante -->
+    <title>Control de Abastecimiento Mensual - Premium Fullscreen (BC Sync V3)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,600&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- SheetJS para procesamiento local de Excel/CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
@@ -40,15 +37,15 @@
                         <span class="w-3.5 h-3.5 rounded-full bg-[#10b981] inline-block shadow-[0_0_10px_#10b981]"></span>
                         Planificación de Compras Mensuales
                     </h1>
-                    <p class="text-xs text-[#a1a1aa] mt-1.5">Estructura avanzada conectada en línea con Microsoft Dynamics 365 Business Central</p>
+                    <p class="text-xs text-[#a1a1aa] mt-1.5">Estructura conectada a BC (Bodegas, Artículos y Movimientos de 6 meses previos)</p>
                 </div>
                 
                 <div class="flex flex-col items-end gap-1 w-full lg:w-auto">
                     <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
                         <div id="status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">Maestro: Vacío</div>
                         <div id="pm-status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">Catálogo Prod: Vacío</div>
-                        <div id="supplier-status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">Proveedores: Sin Cargar</div>
                         
+                        <!-- BOTÓN V3 ACTUALIZADO -->
                         <button id="sync-bc-btn" class="px-5 py-2.5 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-xs rounded-md shadow-lg shadow-[#3b82f6]/10 transition-all flex items-center gap-2 cursor-pointer">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="sync-icon">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18"/>
@@ -61,7 +58,6 @@
                             Exportar Solicitud
                         </button>
                     </div>
-                    <span class="font-['Playfair_Display'] italic text-xs text-zinc-500/80 tracking-widest font-medium uppercase select-none block mt-0.5 pr-1">Creado por Diego Ibarra</span>
                 </div>
             </header>
 
@@ -103,7 +99,7 @@
                     <input type="text" id="search-bar" placeholder="Código o descripción..." class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#10b981]/50">
                 </div>
                 <div class="flex items-center justify-between border-l border-[#27272a] pl-3">
-                    <div class="flex flex-col"><span class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider">Nomenclatura INS</span><span class="text-[11px] text-zinc-500">Ocultar familias INS</span></div>
+                    <div class="flex flex-col"><span class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider">Nomenclatura INS</span></div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="exclude-ins-checkbox" checked class="sr-only peer">
                         <div class="w-9 h-5 bg-[#27272a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#10b981] peer-checked:after:bg-zinc-950"></div>
@@ -151,13 +147,12 @@
         const insCheckbox = document.getElementById('exclude-ins-checkbox');
         const statusBadge = document.getElementById('status-badge');
         const pmStatusBadge = document.getElementById('pm-status-badge');
-        const supplierStatusBadge = document.getElementById('supplier-status-badge');
         const clearCacheBtn = document.getElementById('clear-cache');
         const exportExcelBtn = document.getElementById('export-excel-btn');
         const syncBcBtn = document.getElementById('sync-bc-btn');
         const syncIcon = document.getElementById('sync-icon');
         
-        // URL de tu Power Automate
+        // URL DE POWER AUTOMATE
         const apiUrl = "https://defaultc9de65b0590045e8967debc553f353.81.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/18/workflows/f125d9a482244a189fef1a96971f0573/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=hD2GzTCclad7776sVI0RWgMb1gyn8uRZw5jnlIygLm4";
 
         let appData = { months: [], warehouses: [], records: [], requestedQtys: {}, supplierData: {}, codeToSupplier: {}, globalDescriptions: {} };
@@ -174,12 +169,6 @@
                 if (appData.records && appData.records.length) {
                     statusBadge.innerText = "Maestro: Activo"; statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
                 }
-                if (Object.keys(appData.globalDescriptions).length > 0) {
-                    pmStatusBadge.innerText = "Catálogo Prod: Activo"; pmStatusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#2e164d] text-[#c084fc] border border-[#581c87]";
-                }
-                if (Object.keys(appData.codeToSupplier).length > 0) {
-                    supplierStatusBadge.innerText = "Proveedores: Activo"; supplierStatusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
-                }
                 
                 populateWarehouseSelect();
                 populateSupplierSelect();
@@ -192,7 +181,7 @@
         async function syncWithBusinessCentral() {
             syncIcon.classList.add('animate-spin-slow');
             syncBcBtn.disabled = true;
-            syncBcBtn.innerText = "Sincronizando Múltiples Tablas BC...";
+            syncBcBtn.innerText = "Procesando...";
 
             try {
                 const response = await fetch(apiUrl, { method: 'GET' });
@@ -200,7 +189,12 @@
                 
                 const data = await response.json();
                 
-                // Detección de la nueva estructura JSON: { articulos: [], bodegas: [], movimientos: [] }
+                // VALIDACIÓN DE SEGURIDAD: ¿Power Automate envió las bodegas?
+                if (Array.isArray(data) && !data.bodegas && !data.articulos) {
+                    alert("⚠️ ALERTA DE CONFIGURACIÓN:\nTu flujo de Power Automate sigue enviando únicamente la tabla de Artículos.\nPara ver las 9 bodegas y los consumos históricos, debes actualizar el flujo de Power Automate para que devuelva el objeto JSON completo con 'articulos', 'bodegas' y 'movimientos'.");
+                    throw new Error("Formato heredado detectado.");
+                }
+
                 if (data && data.articulos) {
                     
                     // 1. PROCESAR BODEGAS
@@ -210,14 +204,18 @@
                             if (b.code) whSet.add(b.code.toUpperCase());
                         });
                     }
-                    if (whSet.size === 0) whSet.add("BOD-GENERAL"); // Fallback
+                    if (whSet.size === 0) {
+                        alert("Aviso: El flujo no detectó bodegas en BC. Verificando configuración...");
+                        whSet.add("BOD-GENERAL");
+                    }
                     appData.warehouses = Array.from(whSet).sort();
 
-                    // 2. CONFIGURAR MESES OBJETIVO (Últimos 6 meses)
-                    const maxDate = new Date();
+                    // 2. CONFIGURAR LOS 6 MESES ANTERIORES AL MES DE SINCRONIZACIÓN
+                    const syncDate = new Date();
                     const targetMonths = [];
-                    for (let i = 5; i >= 0; i--) {
-                        const d = new Date(maxDate.getFullYear(), maxDate.getMonth() - i, 1);
+                    // Bucle desde 6 meses atrás hasta 1 mes atrás
+                    for (let i = 6; i >= 1; i--) {
+                        const d = new Date(syncDate.getFullYear(), syncDate.getMonth() - i, 1);
                         targetMonths.push({
                             label: d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).toUpperCase(),
                             year: d.getFullYear(),
@@ -226,33 +224,30 @@
                     }
                     appData.months = targetMonths;
 
-                    // 3. PROCESAR ARTÍCULOS (Maestro Base)
+                    // 3. PROCESAR ARTÍCULOS
                     appData.globalDescriptions = {};
                     const map = {};
-                    
-                    // Definimos la bodega base por si no hay movimientos
                     const defaultWh = appData.warehouses.includes("BOD-CINERA") ? "BOD-CINERA" : appData.warehouses[0];
 
                     data.articulos.forEach(item => {
                         const code = String(item.number || '').trim();
                         const desc = String(item.displayName || '').trim();
-                        const stock = parseFloat(item.inventory) || 0;
+                        // Importante: El stock que trae "items" es general, lo repartiremos por bodega si es posible
                         if (!code) return;
 
                         appData.globalDescriptions[code] = desc;
-
+                        // Creamos un registro base por si no tiene movimientos en ninguna bodega
                         const key = `${code}__${defaultWh}`;
                         map[key] = {
                             key: key, code: code, description: desc, warehouse: defaultWh,
-                            stock: stock, monthlyConsumptions: Array(6).fill(0)
+                            stock: 0, monthlyConsumptions: Array(6).fill(0)
                         };
                     });
 
-                    // 4. PROCESAR MOVIMIENTOS (Consumos Históricos y Stock Distribuido)
+                    // 4. PROCESAR MOVIMIENTOS (Stock y Consumos)
                     if (data.movimientos && Array.isArray(data.movimientos)) {
                         data.movimientos.forEach(mov => {
                             const code = String(mov.itemNumber || '').trim();
-                            // En BC, la bodega puede venir en locationCode
                             const warehouse = String(mov.locationCode || defaultWh).trim().toUpperCase();
                             const qty = parseFloat(mov.quantity) || 0;
                             const dateRaw = new Date(mov.postingDate);
@@ -268,7 +263,10 @@
                                 };
                             }
 
-                            // Los consumos o ventas normalmente generan un número negativo en cantidad
+                            // Calcular stock basado en los movimientos
+                            map[key].stock += qty;
+
+                            // Calcular consumo histórico (solo salidas: qty < 0)
                             if (qty < 0 && !isNaN(dateRaw)) {
                                 const rYear = dateRaw.getFullYear();
                                 const rMonth = dateRaw.getMonth();
@@ -289,18 +287,10 @@
                     populateWarehouseSelect();
                     processAndRender();
                     
-                    alert(`Sincronización exitosa con BC.\n- Artículos: ${data.articulos.length}\n- Bodegas: ${data.bodegas ? data.bodegas.length : 0}\n- Movimientos procesados: ${data.movimientos ? data.movimientos.length : 0}`);
+                    alert(`¡Sincronización Completada!\n- Bodegas obtenidas: ${appData.warehouses.length}\n- Histórico: de ${targetMonths[0].label} a ${targetMonths[5].label}`);
                 } 
-                // Soporte Legacy (Si el flujo aún manda solo el array de artículos)
-                else if (Array.isArray(data)) {
-                    alert("Aviso: El flujo de Power Automate aún está enviando solo los artículos. Por favor actualiza el flujo al formato JSON completo.");
-                } else {
-                    alert("Formato de datos no reconocido desde Power Automate.");
-                }
-
             } catch (error) {
                 console.error("Error de BC:", error);
-                alert("Ocurrió un error al sincronizar con BC. Revisa la configuración de tu flujo de Power Automate.");
             } finally {
                 syncIcon.classList.remove('animate-spin-slow');
                 syncBcBtn.disabled = false;
@@ -309,15 +299,7 @@
         }
 
         dropZoneSuppliers.addEventListener('click', () => fileInputSuppliers.click());
-        dropZoneSuppliers.addEventListener('dragover', (e) => { e.preventDefault(); dropZoneSuppliers.classList.add('border-[#3b82f6]', 'bg-[#1e3a8a]/20'); });
-        dropZoneSuppliers.addEventListener('dragleave', () => dropZoneSuppliers.classList.remove('border-[#3b82f6]', 'bg-[#1e3a8a]/20'));
-        dropZoneSuppliers.addEventListener('drop', (e) => {
-            e.preventDefault(); dropZoneSuppliers.classList.remove('border-[#3b82f6]', 'bg-[#1e3a8a]/20');
-            if (e.dataTransfer.files.length) handleSuppliersFile(e.dataTransfer.files[0]);
-        });
-        fileInputSuppliers.addEventListener('change', (e) => {
-            if (e.target.files.length) handleSuppliersFile(e.target.files[0]);
-        });
+        dropZoneSuppliers.addEventListener('change', (e) => { if (e.target.files.length) handleSuppliersFile(e.target.files[0]); });
 
         warehouseSelect.addEventListener('change', processAndRender);
         supplierSelect.addEventListener('change', processAndRender);
@@ -361,40 +343,15 @@
                         const rowKeys = Object.keys(row);
                         const codeKey = rowKeys.find(k => k.trim().toUpperCase() === 'CÓDIGO');
                         const pendingKey = rowKeys.find(k => k.trim().toUpperCase() === 'CANTIDAD PENDIENTE');
-                        const ocKey = rowKeys.find(k => k.trim().toUpperCase().startsWith('OC'));
-                        const dateKey = rowKeys.find(k => k.trim().toUpperCase() === 'FECHA OC');
-
                         if (!codeKey) return;
                         const productCode = String(row[codeKey] || '').split('|')[0].trim();
                         if (!productCode) return;
                         codeToSupplierMap[productCode] = companyName;
-                        if (!pendingKey) return;
-
-                        const pendingQty = parseFloat(row[pendingKey]) || 0;
-                        if (row[dateKey]) {
-                            let is2025 = false;
-                            if (row[dateKey] instanceof Date) { if (row[dateKey].getFullYear() === 2025) is2025 = true; } 
-                            else { const dateStr = String(row[dateKey]).trim(); if (dateStr.includes('2025') || dateStr.endsWith('/25') || dateStr.endsWith('-25')) is2025 = true; }
-                            if (is2025) return; 
-                        }
-
-                        if (pendingQty > 0) {
-                            let ocValue = String(row[ocKey] || '').trim();
-                            let dateValue = '';
-                            if (row[dateKey]) {
-                                if (row[dateKey] instanceof Date) dateValue = row[dateKey].toLocaleDateString('es-ES');
-                                else dateValue = String(row[dateKey]).trim().split(' ')[0];
-                            }
-                            if (!supplierMap[productCode]) supplierMap[productCode] = [];
-                            supplierMap[productCode].push({ company: companyName, oc: ocValue, date: dateValue, qty: pendingQty });
-                        }
                     });
                 });
-
                 appData.supplierData = supplierMap; appData.codeToSupplier = codeToSupplierMap;
                 localStorage.setItem('logistic_purchase_v7_master', JSON.stringify(appData));
                 populateSupplierSelect(); processAndRender();
-                supplierStatusBadge.innerText = "Proveedores: Activo"; supplierStatusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
             };
             reader.readAsArrayBuffer(file);
         }
@@ -411,8 +368,8 @@
             const suppliers = new Set();
             if (appData.codeToSupplier) Object.values(appData.codeToSupplier).forEach(s => { if (s) suppliers.add(s.toUpperCase().trim()); });
             const sortedSuppliers = Array.from(suppliers).sort();
-            supplierSelect.innerHTML = '<option value="TODOS">Todos los proveedores</option><option value="SIN_PROVEEDOR">Sin Proveedor Asignado</option>' + sortedSuppliers.map(s => `<option value="${s}">${s}</option>`).join('');
-            if (sortedSuppliers.includes(current) || current === "SIN_PROVEEDOR") supplierSelect.value = current;
+            supplierSelect.innerHTML = '<option value="TODOS">Todos los proveedores</option>' + sortedSuppliers.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (sortedSuppliers.includes(current)) supplierSelect.value = current;
         }
 
         function getEvaluatedData() {
@@ -446,17 +403,10 @@
                 if (appData.globalDescriptions && appData.globalDescriptions[p.code]) p.description = appData.globalDescriptions[p.code];
                 const sum = p.monthlyConsumptions.reduce((a, b) => a + b, 0);
                 p.avg6M = Math.ceil(sum / 6);
-                const isCinerarioScope = (selectedWh === "BOD-CINERA") || (selectedWh === "TODAS" && appData.records.some(r => r.code === p.code && r.warehouse === "BOD-CINERA"));
-                const transactions = isCinerarioScope ? (appData.supplierData ? appData.supplierData[p.code] : null) : null;
-                const totalTransit = (transactions && transactions.length > 0) ? transactions.reduce((sum, t) => sum + (parseFloat(t.qty) || 0), 0) : 0;
-                
-                p.sugerido3M = Math.max(0, Math.ceil((p.avg6M * 3) - p.stock - totalTransit));
+                p.sugerido3M = Math.max(0, Math.ceil((p.avg6M * 3) - p.stock));
                 p.mappedSupplier = appData.codeToSupplier ? (appData.codeToSupplier[p.code] || '') : '';
 
-                if (selectedSupplier !== "TODOS") {
-                    if (selectedSupplier === "SIN_PROVEEDOR" && p.mappedSupplier !== '') return;
-                    if (selectedSupplier !== "SIN_PROVEEDOR" && p.mappedSupplier !== selectedSupplier) return;
-                }
+                if (selectedSupplier !== "TODOS" && p.mappedSupplier !== selectedSupplier) return;
                 if (selectedStock === "SIN_STOCK" && p.stock !== 0) return;
                 if (selectedStock === "CON_STOCK" && p.stock === 0) return;
                 if (selectedStatus === "CON_SUGERIDO" && p.sugerido3M === 0) return;
@@ -478,44 +428,26 @@
                     ${months.map(m => `<th class="px-2 py-3.5 text-right text-zinc-400 font-mono text-xs w-20 bg-[#1f1f22]">${m.label}</th>`).join('')}
                     <th class="px-4 py-3.5 text-right text-[#10b981] font-bold w-24 bg-[#1f1f22]">Prom. 6M</th>
                     <th class="px-4 py-3.5 text-right text-amber-400 font-bold w-28 bg-[#1f1f22]">Sugerido (3M)</th>
-                    <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock</th>
-                    <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor (Tránsito Pendiente)</th>
+                    <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock Físico</th>
+                    <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor</th>
                     <th class="px-4 py-3.5 text-center bg-[#242c2a] text-[#10b981] font-bold w-44 border-l border-[#27272a]">Cantidad a Solicitar</th>
                 `;
             } else {
-                tableHeaders.innerHTML = `
-                    <th class="px-4 py-3.5 text-left w-40 bg-[#1f1f22]">Código</th>
-                    <th class="px-4 py-3.5 text-left w-64 bg-[#1f1f22]">Descripción Artículo</th>
-                    <th class="px-4 py-3.5 text-right text-[#10b981] font-bold w-24 bg-[#1f1f22]">Prom. 6M</th>
-                    <th class="px-4 py-3.5 text-right text-amber-400 font-bold w-28 bg-[#1f1f22]">Sugerido (3M)</th>
-                    <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock</th>
-                    <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor (Tránsito)</th>
-                    <th class="px-4 py-3.5 text-center bg-[#242c2a] text-[#10b981] font-bold w-44 border-l border-[#27272a]">A Solicitar</th>
-                `;
+                tableHeaders.innerHTML = `<th class="px-4 py-3.5 text-left bg-[#1f1f22]">Esperando sincronización...</th>`;
             }
 
             if (!products.length) {
-                tableBody.innerHTML = `<tr><td colspan="16" class="px-5 py-16 text-center text-zinc-500 italic bg-[#0f0f11]">Sin registros que coincidan con los filtros seleccionados. Intenta pulsar Sincronización Total BC.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="16" class="px-5 py-16 text-center text-zinc-500 italic bg-[#0f0f11]">Sin registros. Pulsa "Sincronización Total BC".</td></tr>`;
                 return;
             }
 
             tableBody.innerHTML = products.map(p => {
                 let mCells = '';
                 if (months.length === 6) mCells = p.monthlyConsumptions.map(val => `<td class="px-2 py-4 text-right font-mono text-zinc-400 text-xs">${val.toLocaleString('es-ES')}</td>`).join('');
-                
                 const isUnderStock = p.stock < p.avg6M;
                 const stockStyle = isUnderStock && p.avg6M > 0 ? 'text-red-400 font-bold bg-red-950/40 rounded px-2 py-0.5 border border-red-900/50' : 'font-mono text-zinc-300';
                 const savedQty = appData.requestedQtys[p.qKey] !== undefined ? appData.requestedQtys[p.qKey] : '';
-                const isCinerarioScope = (selectedWh === "BOD-CINERA") || (selectedWh === "TODAS" && appData.records.some(r => r.code === p.code && r.warehouse === "BOD-CINERA"));
-                const transactions = isCinerarioScope ? (appData.supplierData ? appData.supplierData[p.code] : null) : null;
-                
-                let supplierCellHtml = '';
-                if (p.mappedSupplier) {
-                    supplierCellHtml += `<div class="text-[#3b82f6] font-bold uppercase tracking-wide text-[11px] mb-1 truncate">${p.mappedSupplier}</div>`;
-                    if (transactions && transactions.length > 0) {
-                        supplierCellHtml += transactions.map(t => `<div class="mb-1 last:mb-0 bg-[#1c1c1f] border border-zinc-800 p-1.5 rounded text-[10px] leading-tight"><div class="text-zinc-400 flex justify-between mt-0.5 gap-2"><span>OC: ${t.oc || 'S/N'}</span><span class="text-zinc-500 font-mono">${t.date || ''}</span></div><div class="text-amber-400 font-medium font-mono text-right mt-0.5">Pendiente: ${t.qty.toLocaleString('es-ES')} u.</div></div>`).join('');
-                    }
-                } else { supplierCellHtml = `<span class="text-zinc-600 italic text-xs select-none">Sin Proveedor Mapeado</span>`; }
+                let supplierCellHtml = p.mappedSupplier ? `<div class="text-[#3b82f6] font-bold uppercase tracking-wide text-[11px] mb-1 truncate">${p.mappedSupplier}</div>` : `<span class="text-zinc-600 italic text-xs select-none">Sin Proveedor</span>`;
 
                 return `
                     <tr class="hover:bg-[#1a1a1c] transition-colors border-b border-[#27272a]/60 text-xs">
@@ -533,17 +465,6 @@
                 `;
             }).join('');
         }
-
-        exportExcelBtn.addEventListener('click', () => {
-            const currentRows = getEvaluatedData(); const exportData = [];
-            currentRows.forEach(p => {
-                const qty = appData.requestedQtys[p.qKey] || 0;
-                if (qty > 0) exportData.push({ 'Código': p.code, 'Descripción': p.description, 'Proveedor': p.mappedSupplier || 'SIN REGISTRO', 'Stock Actual': p.stock, 'Promedio Consumo 6M': p.avg6M, 'Sugerido 3 Meses': p.sugerido3M, 'Cantidad Solicitada': qty });
-            });
-            if (!exportData.length) return alert('No hay cantidades ingresadas (> 0) en los artículos visibles para exportar.');
-            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Sugerido Compra"); XLSX.writeFile(wb, `Plan_Abastecimiento_${warehouseSelect.value}.xlsx`);
-        });
     </script>
 </body>
 </html>
