@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Abastecimiento Mensual - Premium Fullscreen (BC Sync V3)</title>
+    <title>Control de Abastecimiento Mensual - Rango Dinámico (BC Sync V5)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,600&display=swap" rel="stylesheet">
@@ -14,16 +14,19 @@
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
+        
+        input[type=month]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0b0b0c; }
         ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 9999px; border: 2px solid #0b0b0c; }
         ::-webkit-scrollbar-thumb:hover { background: #10b981; }
         * { scrollbar-width: thin; scrollbar-color: #27272a #0b0b0c; }
         
-        @keyframes spin-slow {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin-slow 2s linear infinite; }
     </style>
 </head>
@@ -37,20 +40,18 @@
                         <span class="w-3.5 h-3.5 rounded-full bg-[#10b981] inline-block shadow-[0_0_10px_#10b981]"></span>
                         Planificación de Compras Mensuales
                     </h1>
-                    <p class="text-xs text-[#a1a1aa] mt-1.5">Estructura conectada a BC (Bodegas, Artículos y Movimientos de 6 meses previos)</p>
+                    <p class="text-xs text-[#a1a1aa] mt-1.5">Análisis de consumo con rango de fechas dinámico (Conectado a BC)</p>
                 </div>
                 
                 <div class="flex flex-col items-end gap-1 w-full lg:w-auto">
                     <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
-                        <div id="status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">Maestro: Vacío</div>
-                        <div id="pm-status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">Catálogo Prod: Vacío</div>
+                        <div id="status-badge" class="px-3 py-1.5 rounded-md text-xs font-medium bg-[#141416] text-[#a1a1aa] border border-[#27272a]">Base Datos: Vacía</div>
                         
-                        <!-- BOTÓN V3 ACTUALIZADO -->
                         <button id="sync-bc-btn" class="px-5 py-2.5 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-xs rounded-md shadow-lg shadow-[#3b82f6]/10 transition-all flex items-center gap-2 cursor-pointer">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="sync-icon">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18"/>
                             </svg>
-                            Sincronización Total BC
+                            Sincronizar Datos BC
                         </button>
 
                         <button id="export-excel-btn" class="px-5 py-2.5 bg-[#10b981] hover:bg-[#059669] text-zinc-950 font-bold text-xs rounded-md shadow-lg shadow-[#10b981]/10 transition-all flex items-center gap-2 cursor-pointer">
@@ -61,49 +62,61 @@
                 </div>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                <div class="border border-dashed border-[#3f3f46] rounded-lg p-3 bg-[#141416] text-center opacity-50 cursor-not-allowed">
-                    <p class="text-xs font-semibold text-zinc-400">1. Reporte de Movimientos</p>
-                    <p class="text-[11px] text-zinc-600 mt-0.5">Sincronizado vía BC (itemLedgerEntries)</p>
+            <!-- NUEVO: SELECTOR DE RANGO DE FECHAS -->
+            <div class="bg-[#141416] border border-[#3f3f46] p-3 rounded-xl mb-3 flex flex-wrap items-center gap-4 shadow-lg">
+                <div class="flex items-center gap-2 border-r border-[#27272a] pr-4">
+                    <svg class="w-5 h-5 text-[#a855f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span class="text-xs font-bold text-white uppercase tracking-wider">Rango de Evaluación</span>
                 </div>
-                <div class="border border-dashed border-[#3f3f46] rounded-lg p-3 bg-[#141416] text-center opacity-50 cursor-not-allowed">
-                    <p class="text-xs font-semibold text-zinc-400">2. Maestro de Productos / Bodegas</p>
-                    <p class="text-[11px] text-zinc-600 mt-0.5">Sincronizado vía BC (items, locations)</p>
+                
+                <div class="flex items-center gap-3">
+                    <div class="flex flex-col">
+                        <label class="text-[10px] font-bold text-[#a1a1aa] uppercase mb-0.5">Desde (Mes)</label>
+                        <input type="month" id="start-month" class="bg-[#27272a] border border-[#3f3f46] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#a855f7] transition-colors cursor-pointer">
+                    </div>
+                    <span class="text-zinc-600 font-bold mt-4">-</span>
+                    <div class="flex flex-col">
+                        <label class="text-[10px] font-bold text-[#a1a1aa] uppercase mb-0.5">Hasta (Mes)</label>
+                        <input type="month" id="end-month" class="bg-[#27272a] border border-[#3f3f46] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#a855f7] transition-colors cursor-pointer">
+                    </div>
                 </div>
-                <div id="drop-zone-suppliers" class="border border-dashed border-[#3f3f46] hover:border-[#3b82f6] rounded-lg p-3 bg-[#141416] text-center cursor-pointer transition-colors flex flex-col justify-center items-center group">
-                    <input type="file" id="file-input-suppliers" accept=".xlsx,.xls" class="hidden">
-                    <p class="text-xs font-semibold text-zinc-300 group-hover:text-white">3. SEGUIMIENTO PROVEEDORES CINERARIO</p>
-                    <p class="text-[11px] text-zinc-500 mt-0.5">Mapeo de marcas y órdenes vigentes 2026</p>
+
+                <button id="apply-dates-btn" class="mt-4 px-4 py-1.5 bg-[#a855f7]/20 hover:bg-[#a855f7]/40 text-[#d8b4fe] border border-[#a855f7]/50 font-bold text-xs rounded transition-all cursor-pointer">
+                    Aplicar y Recalcular
+                </button>
+
+                <div class="ml-auto mt-4">
+                    <span id="months-count-badge" class="text-xs text-[#a855f7] font-mono font-bold bg-[#a855f7]/10 px-3 py-1.5 rounded border border-[#a855f7]/30">
+                        Esperando fechas...
+                    </span>
                 </div>
             </div>
 
+            <!-- FILTROS Y BUSQUEDAS -->
             <div class="bg-[#141416] border border-[#27272a] p-3 rounded-xl grid grid-cols-1 md:grid-cols-6 gap-3">
                 <div class="flex flex-col justify-center">
-                    <label for="warehouse-select" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Bodega</label>
+                    <label class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Bodega</label>
                     <select id="warehouse-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50"><option value="TODAS">Todas las bodegas</option></select>
                 </div>
                 <div class="flex flex-col justify-center">
-                    <label for="supplier-select" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Filtrar por Proveedor</label>
+                    <label class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Filtrar por Proveedor</label>
                     <select id="supplier-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50"><option value="TODOS">Todos los proveedores</option></select>
                 </div>
                 <div class="flex flex-col justify-center">
-                    <label for="stock-filter-select" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Disponibilidad Stock</label>
+                    <label class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Disponibilidad Stock</label>
                     <select id="stock-filter-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50"><option value="TODOS">Ver todo el stock</option><option value="SIN_STOCK">Sin Stock (Stock = 0)</option><option value="CON_STOCK">Con Stock (> 0)</option></select>
                 </div>
                 <div class="flex flex-col justify-center">
-                    <label for="status-filter-select" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Estado de Compra</label>
-                    <select id="status-filter-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50"><option value="TODOS">Ver Todo el Listado</option><option value="CON_SUGERIDO">Solo con Sugerido Compra (> 0)</option><option value="STOCK_CRITICO">Stock Crítico (Stock < Promedio Mensual)</option></select>
+                    <label class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Estado de Compra</label>
+                    <select id="status-filter-select" class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-[#10b981]/50"><option value="TODOS">Ver Todo el Listado</option><option value="CON_SUGERIDO">Solo con Sugerido Compra (> 0)</option></select>
                 </div>
                 <div class="flex flex-col justify-center">
-                    <label for="search-bar" class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Búsqueda rápida</label>
+                    <label class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Búsqueda rápida</label>
                     <input type="text" id="search-bar" placeholder="Código o descripción..." class="w-full bg-[#27272a] border border-[#3f3f46] rounded-md px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#10b981]/50">
                 </div>
-                <div class="flex items-center justify-between border-l border-[#27272a] pl-3">
-                    <div class="flex flex-col"><span class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider">Nomenclatura INS</span></div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="exclude-ins-checkbox" checked class="sr-only peer">
-                        <div class="w-9 h-5 bg-[#27272a] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#10b981] peer-checked:after:bg-zinc-950"></div>
-                    </label>
+                <div class="flex flex-col justify-center border-l border-[#27272a] pl-3">
+                     <label class="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider mb-1">Cargar Tránsito Proveedores</label>
+                     <input type="file" id="file-input-suppliers" accept=".xlsx,.xls" class="text-[10px] text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-[#27272a] file:text-white hover:file:bg-[#3f3f46] cursor-pointer">
                 </div>
             </div>
 
@@ -119,15 +132,16 @@
                         <tr id="table-headers">
                             <th class="px-4 py-3.5 text-left w-40 bg-[#1f1f22]">Código</th>
                             <th class="px-4 py-3.5 text-left w-64 bg-[#1f1f22]">Descripción Artículo</th>
-                            <th class="px-4 py-3.5 text-right text-[#10b981] font-bold w-24 bg-[#1f1f22]">Prom. 6M</th>
+                            <th class="px-4 py-3.5 text-right font-bold w-28 bg-[#1f1f22] text-[#c084fc]">Consumo Rango</th>
+                            <th class="px-4 py-3.5 text-right font-bold w-28 bg-[#1f1f22] text-[#10b981]">Prom. Mensual</th>
                             <th class="px-4 py-3.5 text-right text-amber-400 font-bold w-28 bg-[#1f1f22]">Sugerido (3M)</th>
-                            <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock</th>
-                            <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor (Tránsito Pendiente)</th>
+                            <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock Físico</th>
+                            <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor (Tránsito Pend.)</th>
                             <th class="px-4 py-3.5 text-center bg-[#242c2a] text-[#10b981] font-bold w-44 border-l border-[#27272a]">Cantidad a Solicitar</th>
                         </tr>
                     </thead>
                     <tbody id="data-table-body" class="divide-y divide-[#27272a]/60 text-[#e4e4e7]">
-                        <tr><td colspan="13" class="px-5 py-16 text-center text-zinc-500 italic bg-[#0f0f11]">Esperando sincronización con Business Central...</td></tr>
+                        <tr><td colspan="8" class="px-5 py-16 text-center text-zinc-500 italic bg-[#0f0f11]">Esperando sincronización con Business Central...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -136,177 +150,186 @@
 
     <script>
         const fileInputSuppliers = document.getElementById('file-input-suppliers');
-        const dropZoneSuppliers = document.getElementById('drop-zone-suppliers');
         const tableBody = document.getElementById('data-table-body');
-        const tableHeaders = document.getElementById('table-headers');
         const searchBar = document.getElementById('search-bar');
         const warehouseSelect = document.getElementById('warehouse-select');
         const supplierSelect = document.getElementById('supplier-select');
         const stockFilterSelect = document.getElementById('stock-filter-select');
         const statusFilterSelect = document.getElementById('status-filter-select');
-        const insCheckbox = document.getElementById('exclude-ins-checkbox');
         const statusBadge = document.getElementById('status-badge');
-        const pmStatusBadge = document.getElementById('pm-status-badge');
         const clearCacheBtn = document.getElementById('clear-cache');
         const exportExcelBtn = document.getElementById('export-excel-btn');
         const syncBcBtn = document.getElementById('sync-bc-btn');
         const syncIcon = document.getElementById('sync-icon');
         
-        // URL DE POWER AUTOMATE
+        // Elementos de Rango de Fecha
+        const startMonthInput = document.getElementById('start-month');
+        const endMonthInput = document.getElementById('end-month');
+        const applyDatesBtn = document.getElementById('apply-dates-btn');
+        const monthsCountBadge = document.getElementById('months-count-badge');
+        
         const apiUrl = "https://defaultc9de65b0590045e8967debc553f353.81.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/18/workflows/f125d9a482244a189fef1a96971f0573/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=hD2GzTCclad7776sVI0RWgMb1gyn8uRZw5jnlIygLm4";
 
-        let appData = { months: [], warehouses: [], records: [], requestedQtys: {}, supplierData: {}, codeToSupplier: {}, globalDescriptions: {} };
+        let appData = { rawArts: null, rawMovs: null, currentMonthsCount: 1, warehouses: [], records: [], requestedQtys: {}, supplierData: {}, codeToSupplier: {}, globalDescriptions: {} };
 
         document.addEventListener('DOMContentLoaded', () => {
-            const saved = localStorage.getItem('logistic_purchase_v7_master');
+            // Configurar fechas por defecto (Ej: Últimos 6 meses)
+            const today = new Date();
+            const defaultStart = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+            startMonthInput.value = `${defaultStart.getFullYear()}-${String(defaultStart.getMonth() + 1).padStart(2, '0')}`;
+            endMonthInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+            const saved = localStorage.getItem('logistic_purchase_v8_dynamic');
             if (saved) {
-                appData = JSON.parse(saved);
+                const parsed = JSON.parse(saved);
+                appData = { ...appData, ...parsed };
                 if (!appData.requestedQtys) appData.requestedQtys = {};
                 if (!appData.supplierData) appData.supplierData = {};
                 if (!appData.codeToSupplier) appData.codeToSupplier = {};
-                if (!appData.globalDescriptions) appData.globalDescriptions = {};
                 
-                if (appData.records && appData.records.length) {
-                    statusBadge.innerText = "Maestro: Activo"; statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
+                if (appData.rawArts && appData.rawMovs) {
+                    statusBadge.innerText = "Base Datos: Activa (BC)"; statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
+                    buildRecordsFromRaw(); // Reconstruye con las fechas actuales del input
                 }
-                
-                populateWarehouseSelect();
-                populateSupplierSelect();
-                processAndRender();
             }
         });
 
-        syncBcBtn.addEventListener('click', syncWithBusinessCentral);
+        applyDatesBtn.addEventListener('click', () => {
+            if (!appData.rawArts) {
+                alert("Primero debes sincronizar los datos con Business Central.");
+                return;
+            }
+            buildRecordsFromRaw();
+        });
 
-        async function syncWithBusinessCentral() {
+        syncBcBtn.addEventListener('click', async () => {
             syncIcon.classList.add('animate-spin-slow');
             syncBcBtn.disabled = true;
-            syncBcBtn.innerText = "Procesando...";
+            syncBcBtn.innerText = "Descargando Histórico...";
 
             try {
                 const response = await fetch(apiUrl, { method: 'GET' });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
                 const data = await response.json();
-                
-                // VALIDACIÓN DE SEGURIDAD: ¿Power Automate envió las bodegas?
-                if (Array.isArray(data) && !data.bodegas && !data.articulos) {
-                    alert("⚠️ ALERTA DE CONFIGURACIÓN:\nTu flujo de Power Automate sigue enviando únicamente la tabla de Artículos.\nPara ver las 9 bodegas y los consumos históricos, debes actualizar el flujo de Power Automate para que devuelva el objeto JSON completo con 'articulos', 'bodegas' y 'movimientos'.");
-                    throw new Error("Formato heredado detectado.");
-                }
 
-                if (data && data.articulos) {
+                if (data && data.articulos && data.movimientos) {
+                    appData.rawArts = data.articulos;
+                    appData.rawMovs = data.movimientos;
+                    localStorage.setItem('logistic_purchase_v8_dynamic', JSON.stringify(appData));
                     
-                    // 1. PROCESAR BODEGAS
-                    const whSet = new Set();
-                    if (data.bodegas && Array.isArray(data.bodegas)) {
-                        data.bodegas.forEach(b => {
-                            if (b.code) whSet.add(b.code.toUpperCase());
-                        });
-                    }
-                    if (whSet.size === 0) {
-                        alert("Aviso: El flujo no detectó bodegas en BC. Verificando configuración...");
-                        whSet.add("BOD-GENERAL");
-                    }
-                    appData.warehouses = Array.from(whSet).sort();
-
-                    // 2. CONFIGURAR LOS 6 MESES ANTERIORES AL MES DE SINCRONIZACIÓN
-                    const syncDate = new Date();
-                    const targetMonths = [];
-                    // Bucle desde 6 meses atrás hasta 1 mes atrás
-                    for (let i = 6; i >= 1; i--) {
-                        const d = new Date(syncDate.getFullYear(), syncDate.getMonth() - i, 1);
-                        targetMonths.push({
-                            label: d.toLocaleString('es-ES', { month: 'short', year: '2-digit' }).toUpperCase(),
-                            year: d.getFullYear(),
-                            month: d.getMonth()
-                        });
-                    }
-                    appData.months = targetMonths;
-
-                    // 3. PROCESAR ARTÍCULOS
-                    appData.globalDescriptions = {};
-                    const map = {};
-                    const defaultWh = appData.warehouses.includes("BOD-CINERA") ? "BOD-CINERA" : appData.warehouses[0];
-
-                    data.articulos.forEach(item => {
-                        const code = String(item.number || '').trim();
-                        const desc = String(item.displayName || '').trim();
-                        // Importante: El stock que trae "items" es general, lo repartiremos por bodega si es posible
-                        if (!code) return;
-
-                        appData.globalDescriptions[code] = desc;
-                        // Creamos un registro base por si no tiene movimientos en ninguna bodega
-                        const key = `${code}__${defaultWh}`;
-                        map[key] = {
-                            key: key, code: code, description: desc, warehouse: defaultWh,
-                            stock: 0, monthlyConsumptions: Array(6).fill(0)
-                        };
-                    });
-
-                    // 4. PROCESAR MOVIMIENTOS (Stock y Consumos)
-                    if (data.movimientos && Array.isArray(data.movimientos)) {
-                        data.movimientos.forEach(mov => {
-                            const code = String(mov.itemNumber || '').trim();
-                            const warehouse = String(mov.locationCode || defaultWh).trim().toUpperCase();
-                            const qty = parseFloat(mov.quantity) || 0;
-                            const dateRaw = new Date(mov.postingDate);
-
-                            if (!code) return;
-
-                            const key = `${code}__${warehouse}`;
-
-                            if (!map[key]) {
-                                map[key] = {
-                                    key: key, code: code, description: appData.globalDescriptions[code] || `Art. ${code}`,
-                                    warehouse: warehouse, stock: 0, monthlyConsumptions: Array(6).fill(0)
-                                };
-                            }
-
-                            // Calcular stock basado en los movimientos
-                            map[key].stock += qty;
-
-                            // Calcular consumo histórico (solo salidas: qty < 0)
-                            if (qty < 0 && !isNaN(dateRaw)) {
-                                const rYear = dateRaw.getFullYear();
-                                const rMonth = dateRaw.getMonth();
-                                const mIdx = targetMonths.findIndex(m => m.year === rYear && m.month === rMonth);
-                                if (mIdx !== -1) map[key].monthlyConsumptions[mIdx] += Math.abs(qty);
-                            }
-                        });
-                    }
-
-                    appData.records = Object.values(map);
-                    localStorage.setItem('logistic_purchase_v7_master', JSON.stringify(appData));
-                    
-                    statusBadge.innerText = "Registros: 100% BC";
+                    statusBadge.innerText = "Base Datos: Activa (BC)"; 
                     statusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#11221f] text-[#10b981] border border-[#14532d]";
-                    pmStatusBadge.innerText = "Bodegas/Cat: BC Activo";
-                    pmStatusBadge.className = "px-3 py-1.5 rounded-md text-xs font-medium bg-[#2e164d] text-[#c084fc] border border-[#581c87]";
                     
-                    populateWarehouseSelect();
-                    processAndRender();
-                    
-                    alert(`¡Sincronización Completada!\n- Bodegas obtenidas: ${appData.warehouses.length}\n- Histórico: de ${targetMonths[0].label} a ${targetMonths[5].label}`);
-                } 
+                    buildRecordsFromRaw();
+                    alert("¡Datos descargados! Ahora puedes cambiar el rango de fechas cuantas veces quieras y el cálculo será inmediato.");
+                } else {
+                    alert("El flujo no devolvió la estructura esperada de artículos y movimientos.");
+                }
             } catch (error) {
                 console.error("Error de BC:", error);
+                alert("Ocurrió un error al sincronizar con BC.");
             } finally {
                 syncIcon.classList.remove('animate-spin-slow');
                 syncBcBtn.disabled = false;
-                syncBcBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="sync-icon"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18"/></svg> Sincronización Total BC`;
+                syncBcBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" id="sync-icon"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89H18"/></svg> Sincronizar Datos BC`;
             }
-        }
+        });
 
-        dropZoneSuppliers.addEventListener('click', () => fileInputSuppliers.click());
-        dropZoneSuppliers.addEventListener('change', (e) => { if (e.target.files.length) handleSuppliersFile(e.target.files[0]); });
+        function buildRecordsFromRaw() {
+            if (!appData.rawArts || !appData.rawMovs) return;
+
+            const startVal = startMonthInput.value;
+            const endVal = endMonthInput.value;
+            if(!startVal || !endVal) return alert("Por favor, selecciona el mes de inicio y el mes de fin.");
+
+            const [sYear, sMonth] = startVal.split('-');
+            const [eYear, eMonth] = endVal.split('-');
+            
+            // Inicio: Día 1 del mes seleccionado
+            const startDate = new Date(sYear, parseInt(sMonth) - 1, 1);
+            // Fin: Último día del mes seleccionado
+            const endDate = new Date(eYear, parseInt(eMonth), 0); 
+
+            let monthsCount = (parseInt(eYear) - parseInt(sYear)) * 12 + (parseInt(eMonth) - parseInt(sMonth)) + 1;
+            
+            if (monthsCount <= 0) {
+                alert("Error: El mes de 'Inicio' no puede ser mayor al mes de 'Fin'.");
+                return;
+            }
+            
+            appData.currentMonthsCount = monthsCount;
+            monthsCountBadge.innerText = `${monthsCount} Mes(es) Evaluado(s)`;
+
+            const map = {};
+            const whSet = new Set();
+            appData.globalDescriptions = {};
+
+            appData.rawArts.forEach(item => {
+                const code = String(item.number || '').trim();
+                const desc = String(item.displayName || '').trim();
+                if (code) appData.globalDescriptions[code] = desc;
+            });
+
+            appData.rawMovs.forEach(mov => {
+                const code = String(mov.itemNumber || '').trim();
+                const warehouseRaw = String(mov.locationCode || '').trim().toUpperCase();
+                const qty = parseFloat(mov.quantity) || 0;
+                const dateRaw = mov.postingDate ? new Date(mov.postingDate) : null;
+
+                if (!code || !warehouseRaw) return;
+                whSet.add(warehouseRaw);
+
+                const key = `${code}__${warehouseRaw}`;
+                if (!map[key]) {
+                    map[key] = {
+                        key: key, code: code, 
+                        description: appData.globalDescriptions[code] || `Art. ${code}`,
+                        warehouse: warehouseRaw, stock: 0, 
+                        totalConsumption: 0
+                    };
+                }
+
+                // 1. EL STOCK FÍSICO SIEMPRE SE SUMA (Inventario actual real)
+                map[key].stock += qty;
+
+                // 2. EL CONSUMO SE EVALÚA SOLO SI CAE DENTRO DEL RANGO DE FECHAS SELECCIONADO
+                if (dateRaw && dateRaw >= startDate && dateRaw <= endDate) {
+                    if (qty < 0) {
+                        map[key].totalConsumption += Math.abs(qty);
+                    }
+                }
+            });
+
+            const detectedWarehouses = Array.from(whSet).sort();
+            if (detectedWarehouses.length === 0) detectedWarehouses.push("BOD-GENERAL");
+            appData.warehouses = detectedWarehouses;
+
+            // Rellenar artículos base que no tuvieron movimientos
+            appData.rawArts.forEach(item => {
+                const code = String(item.number || '').trim();
+                if (!code) return;
+                const defaultWh = detectedWarehouses[0];
+                const key = `${code}__${defaultWh}`;
+                if (!map[key]) {
+                    map[key] = {
+                        key: key, code: code, description: appData.globalDescriptions[code], 
+                        warehouse: defaultWh, stock: 0, totalConsumption: 0
+                    };
+                }
+            });
+
+            appData.records = Object.values(map);
+            populateWarehouseSelect();
+            processAndRender();
+        }
 
         warehouseSelect.addEventListener('change', processAndRender);
         supplierSelect.addEventListener('change', processAndRender);
         stockFilterSelect.addEventListener('change', processAndRender);
         statusFilterSelect.addEventListener('change', processAndRender);
-        insCheckbox.addEventListener('change', processAndRender);
         searchBar.addEventListener('input', processAndRender);
+
+        fileInputSuppliers.addEventListener('change', (e) => { if (e.target.files.length) handleSuppliersFile(e.target.files[0]); });
 
         tableBody.addEventListener('input', (e) => {
             if (e.target.classList.contains('qty-input')) {
@@ -314,13 +337,13 @@
                 const value = parseInt(e.target.value);
                 if (!isNaN(value) && value >= 0) appData.requestedQtys[qKey] = value;
                 else delete appData.requestedQtys[qKey];
-                localStorage.setItem('logistic_purchase_v7_master', JSON.stringify(appData));
+                localStorage.setItem('logistic_purchase_v8_dynamic', JSON.stringify(appData));
             }
         });
 
         clearCacheBtn.addEventListener('click', () => {
             if (confirm('¿Deseas resetear por completo todas las bases de datos y memorias locales?')) {
-                localStorage.removeItem('logistic_purchase_v7_master'); location.reload();
+                localStorage.removeItem('logistic_purchase_v8_dynamic'); location.reload();
             }
         });
 
@@ -343,15 +366,29 @@
                         const rowKeys = Object.keys(row);
                         const codeKey = rowKeys.find(k => k.trim().toUpperCase() === 'CÓDIGO');
                         const pendingKey = rowKeys.find(k => k.trim().toUpperCase() === 'CANTIDAD PENDIENTE');
+                        const ocKey = rowKeys.find(k => k.trim().toUpperCase().startsWith('OC'));
+                        const dateKey = rowKeys.find(k => k.trim().toUpperCase() === 'FECHA OC');
+
                         if (!codeKey) return;
                         const productCode = String(row[codeKey] || '').split('|')[0].trim();
                         if (!productCode) return;
                         codeToSupplierMap[productCode] = companyName;
+
+                        if (!pendingKey) return;
+                        const pendingQty = parseFloat(row[pendingKey]) || 0;
+
+                        if (pendingQty > 0) {
+                            let ocValue = String(row[ocKey] || '').trim();
+                            let dateValue = row[dateKey] instanceof Date ? row[dateKey].toLocaleDateString('es-ES') : String(row[dateKey] || '').trim().split(' ')[0];
+                            if (!supplierMap[productCode]) supplierMap[productCode] = [];
+                            supplierMap[productCode].push({ company: companyName, oc: ocValue, date: dateValue, qty: pendingQty });
+                        }
                     });
                 });
                 appData.supplierData = supplierMap; appData.codeToSupplier = codeToSupplierMap;
-                localStorage.setItem('logistic_purchase_v7_master', JSON.stringify(appData));
+                localStorage.setItem('logistic_purchase_v8_dynamic', JSON.stringify(appData));
                 populateSupplierSelect(); processAndRender();
+                alert("Proveedores cargados exitosamente.");
             };
             reader.readAsArrayBuffer(file);
         }
@@ -373,12 +410,10 @@
         }
 
         function getEvaluatedData() {
-            const selectedWh = warehouseSelect.value; const excludeINS = insCheckbox.checked; const query = searchBar.value.toLowerCase();
+            const selectedWh = warehouseSelect.value; const query = searchBar.value.toLowerCase();
             const selectedSupplier = supplierSelect.value; const selectedStock = stockFilterSelect.value; const selectedStatus = statusFilterSelect.value;
 
             let filtered = appData.records.filter(r => {
-                if (excludeINS && r.code.toUpperCase().startsWith('INS')) return false;
-                if (appData.globalDescriptions && appData.globalDescriptions[r.code]) r.description = appData.globalDescriptions[r.code];
                 if (query && !r.code.toLowerCase().includes(query) && !r.description.toLowerCase().includes(query)) return false;
                 return true;
             });
@@ -388,10 +423,10 @@
                 const group = {};
                 filtered.forEach(r => {
                     if (!group[r.code]) {
-                        group[r.code] = { code: r.code, description: r.description, stock: 0, monthlyConsumptions: Array(6).fill(0), qKey: `GLOBAL__${r.code}` };
+                        group[r.code] = { code: r.code, description: r.description, stock: 0, totalConsumption: 0, qKey: `GLOBAL__${r.code}` };
                     }
                     group[r.code].stock += r.stock;
-                    for (let i = 0; i < 6; i++) group[r.code].monthlyConsumptions[i] += r.monthlyConsumptions[i];
+                    group[r.code].totalConsumption += r.totalConsumption;
                 });
                 aggregated = Object.values(group);
             } else {
@@ -400,17 +435,14 @@
 
             let finalData = [];
             aggregated.forEach(p => {
-                if (appData.globalDescriptions && appData.globalDescriptions[p.code]) p.description = appData.globalDescriptions[p.code];
-                const sum = p.monthlyConsumptions.reduce((a, b) => a + b, 0);
-                p.avg6M = Math.ceil(sum / 6);
-                p.sugerido3M = Math.max(0, Math.ceil((p.avg6M * 3) - p.stock));
+                p.avgMonthly = Math.ceil(p.totalConsumption / appData.currentMonthsCount);
+                p.sugerido3M = Math.max(0, Math.ceil((p.avgMonthly * 3) - p.stock));
                 p.mappedSupplier = appData.codeToSupplier ? (appData.codeToSupplier[p.code] || '') : '';
 
                 if (selectedSupplier !== "TODOS" && p.mappedSupplier !== selectedSupplier) return;
                 if (selectedStock === "SIN_STOCK" && p.stock !== 0) return;
                 if (selectedStock === "CON_STOCK" && p.stock === 0) return;
                 if (selectedStatus === "CON_SUGERIDO" && p.sugerido3M === 0) return;
-                if (selectedStatus === "STOCK_CRITICO" && p.stock >= p.avg6M) return;
                 finalData.push(p);
             });
 
@@ -419,45 +451,38 @@
         }
 
         function processAndRender() {
-            const months = appData.months; const products = getEvaluatedData(); const selectedWh = warehouseSelect.value;
-
-            if (months.length === 6) {
-                tableHeaders.innerHTML = `
-                    <th class="px-4 py-3.5 text-left w-40 bg-[#1f1f22]">Código</th>
-                    <th class="px-4 py-3.5 text-left w-64 bg-[#1f1f22]">Descripción Artículo</th>
-                    ${months.map(m => `<th class="px-2 py-3.5 text-right text-zinc-400 font-mono text-xs w-20 bg-[#1f1f22]">${m.label}</th>`).join('')}
-                    <th class="px-4 py-3.5 text-right text-[#10b981] font-bold w-24 bg-[#1f1f22]">Prom. 6M</th>
-                    <th class="px-4 py-3.5 text-right text-amber-400 font-bold w-28 bg-[#1f1f22]">Sugerido (3M)</th>
-                    <th class="px-4 py-3.5 text-right w-24 bg-[#1f1f22]">Stock Físico</th>
-                    <th class="px-4 py-3.5 text-left w-72 bg-[#1f1f22]">Proveedor</th>
-                    <th class="px-4 py-3.5 text-center bg-[#242c2a] text-[#10b981] font-bold w-44 border-l border-[#27272a]">Cantidad a Solicitar</th>
-                `;
-            } else {
-                tableHeaders.innerHTML = `<th class="px-4 py-3.5 text-left bg-[#1f1f22]">Esperando sincronización...</th>`;
-            }
+            const products = getEvaluatedData(); 
+            const selectedWh = warehouseSelect.value;
 
             if (!products.length) {
-                tableBody.innerHTML = `<tr><td colspan="16" class="px-5 py-16 text-center text-zinc-500 italic bg-[#0f0f11]">Sin registros. Pulsa "Sincronización Total BC".</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="8" class="px-5 py-16 text-center text-zinc-500 italic bg-[#0f0f11]">Sin registros que coincidan con los filtros.</td></tr>`;
                 return;
             }
 
             tableBody.innerHTML = products.map(p => {
-                let mCells = '';
-                if (months.length === 6) mCells = p.monthlyConsumptions.map(val => `<td class="px-2 py-4 text-right font-mono text-zinc-400 text-xs">${val.toLocaleString('es-ES')}</td>`).join('');
-                const isUnderStock = p.stock < p.avg6M;
-                const stockStyle = isUnderStock && p.avg6M > 0 ? 'text-red-400 font-bold bg-red-950/40 rounded px-2 py-0.5 border border-red-900/50' : 'font-mono text-zinc-300';
+                const isUnderStock = p.stock < p.avgMonthly;
+                const stockStyle = isUnderStock && p.avgMonthly > 0 ? 'text-red-400 font-bold bg-red-950/40 rounded px-2 py-0.5 border border-red-900/50' : 'font-mono text-zinc-300';
                 const savedQty = appData.requestedQtys[p.qKey] !== undefined ? appData.requestedQtys[p.qKey] : '';
+                
+                const isCinerarioScope = (selectedWh === "BOD-CINERA") || (selectedWh === "TODAS" && appData.records.some(r => r.code === p.code && r.warehouse === "BOD-CINERA"));
+                const transactions = isCinerarioScope ? (appData.supplierData ? appData.supplierData[p.code] : null) : null;
+
                 let supplierCellHtml = p.mappedSupplier ? `<div class="text-[#3b82f6] font-bold uppercase tracking-wide text-[11px] mb-1 truncate">${p.mappedSupplier}</div>` : `<span class="text-zinc-600 italic text-xs select-none">Sin Proveedor</span>`;
+                if (transactions && transactions.length > 0) {
+                    supplierCellHtml += transactions.map(t => `<div class="mb-1 last:mb-0 bg-[#1c1c1f] border border-zinc-800 p-1.5 rounded text-[10px] leading-tight"><div class="text-zinc-400 flex justify-between mt-0.5 gap-2"><span>OC: ${t.oc || 'S/N'}</span><span class="text-zinc-500 font-mono">${t.date || ''}</span></div><div class="text-amber-400 font-medium font-mono text-right mt-0.5">Pendiente: ${t.qty.toLocaleString('es-ES')} u.</div></div>`).join('');
+                }
 
                 return `
                     <tr class="hover:bg-[#1a1a1c] transition-colors border-b border-[#27272a]/60 text-xs">
                         <td class="px-4 py-3 font-mono font-bold text-zinc-300 select-all tracking-wider">${p.code}</td>
                         <td class="px-4 py-3 text-zinc-300 font-medium truncate" title="${p.description}">${p.description}</td>
-                        ${mCells}
-                        <td class="px-4 py-3 text-right font-mono font-bold text-[#10b981] bg-[#10b981]/5">${p.avg6M.toLocaleString('es-ES')}</td>
+                        
+                        <td class="px-4 py-3 text-right font-mono font-bold text-[#d8b4fe] bg-[#a855f7]/5 border-l border-[#27272a]/40">${p.totalConsumption.toLocaleString('es-ES')}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-[#10b981] bg-[#10b981]/5">${p.avgMonthly.toLocaleString('es-ES')}</td>
                         <td class="px-4 py-3 text-right font-mono font-bold text-amber-400 bg-amber-500/5">${p.sugerido3M.toLocaleString('es-ES')}</td>
-                        <td class="px-4 py-3 text-right"><span class="${stockStyle}">${p.stock.toLocaleString('es-ES')}</span></td>
-                        <td class="px-4 py-2 text-left align-middle">${supplierCellHtml}</td>
+                        
+                        <td class="px-4 py-3 text-right border-l border-[#27272a]/40"><span class="${stockStyle}">${p.stock.toLocaleString('es-ES')}</span></td>
+                        <td class="px-4 py-2 text-left align-middle border-l border-[#27272a]/40">${supplierCellHtml}</td>
                         <td class="px-4 py-1 text-center bg-[#161d1b]/30 border-l border-[#242c2a]">
                             <input type="number" min="0" placeholder="0" class="qty-input w-32 px-2.5 py-1.5 bg-[#0b0b0c] border border-[#3f3f46] focus:border-[#10b981] text-[#10b981] rounded text-right focus:outline-none font-mono font-bold shadow-inner focus:ring-1 focus:ring-[#10b981]/40" data-qkey="${p.qKey}" value="${savedQty}">
                         </td>
@@ -465,6 +490,17 @@
                 `;
             }).join('');
         }
+
+        exportExcelBtn.addEventListener('click', () => {
+            const currentRows = getEvaluatedData(); const exportData = [];
+            currentRows.forEach(p => {
+                const qty = appData.requestedQtys[p.qKey] || 0;
+                if (qty > 0) exportData.push({ 'Código': p.code, 'Descripción': p.description, 'Proveedor': p.mappedSupplier || 'SIN REGISTRO', 'Stock Físico Actual': p.stock, 'Consumo Total Periodo': p.totalConsumption, 'Promedio Mensual': p.avgMonthly, 'Sugerido 3 Meses': p.sugerido3M, 'Cantidad Solicitada': qty });
+            });
+            if (!exportData.length) return alert('No hay cantidades ingresadas (> 0) en los artículos visibles para exportar.');
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sugerido Compra"); XLSX.writeFile(wb, `Plan_Abastecimiento_${warehouseSelect.value}.xlsx`);
+        });
     </script>
 </body>
 </html>
